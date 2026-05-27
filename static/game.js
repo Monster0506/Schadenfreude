@@ -30,6 +30,7 @@ const PIECES = [
 const POINTS = [0, 100, 300, 500, 800];
 const LEVEL_SPEED = (level) => Math.max(50, 1000 - (level - 1) * 90);
 const QUEUE_SIZE = 10;
+const DEBUG = true;
 
 const boardCanvas = document.getElementById('board');
 const boardCtx    = boardCanvas.getContext('2d');
@@ -53,6 +54,8 @@ const DAS_REPEAT = 33;
 let dasEnabled = true;
 const dasState = {};
 
+let wallKicksEnabled = true;
+
 let ws = null;
 let myId = null;
 let roomId = null;
@@ -70,9 +73,22 @@ function enableStore() {
 const itemBase = {
   _timer: null,
   _dismiss: null,
+  _rxTimer: null,
+  _rxDismiss: null,
   _clearTimer() { clearTimeout(this._timer); this._timer = null; },
   _clearMsg()   { if (this._dismiss) { this._dismiss(); this._dismiss = null; } },
   _showMsg(text) { this._dismiss = showMsg(text); },
+  _rxClear() {
+    clearTimeout(this._rxTimer); this._rxTimer = null;
+    if (this._rxDismiss) { this._rxDismiss(); this._rxDismiss = null; }
+  },
+  _tryBuy() {
+    const cost = DEBUG ? 0 : this.cost;
+    if (gold < cost || this.active) return false;
+    gold -= cost;
+    goldEl.textContent = gold;
+    return true;
+  },
 };
 
 function makeItem(def) {
@@ -85,9 +101,7 @@ const STORE_ITEMS = {
     active: false,
     _targetedUntil: 0,
     buy() {
-      if (gold < this.cost || this.active) return;
-      gold -= this.cost;
-      goldEl.textContent = gold;
+      if (!this._tryBuy()) return;
       this.active = true;
       sendWS({ type: 'peek' });
       disableStore();
@@ -121,9 +135,7 @@ const STORE_ITEMS = {
     label: 'SHIELD', cost: 2,
     active: false,
     buy() {
-      if (gold < this.cost || this.active) return;
-      gold -= this.cost;
-      goldEl.textContent = gold;
+      if (!this._tryBuy()) return;
       this.active = true;
       this._clearMsg();
       this._showMsg('[shield active]');
@@ -144,14 +156,48 @@ const STORE_ITEMS = {
     },
   }),
 
+  slide_denied: makeItem({
+    label: 'SLIDE DENIED', cost: 4,
+    active: false,
+    buy() {
+      if (!this._tryBuy()) return;
+      this.active = true;
+      sendWS({ type: 'slide_denied' });
+      disableStore();
+      this._showMsg('[slide denied sent]');
+      this._timer = setTimeout(() => this.deactivate(), 8000);
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._rxClear();
+      dasEnabled = true;
+      wallKicksEnabled = true;
+      enableStore();
+    },
+    onMessage(msg) {
+      if (msg.type === 'slide_denied' && inGame && !gameOver) {
+        this._rxClear();
+        dasEnabled = false;
+        wallKicksEnabled = false;
+        clearAllDAS();
+        this._rxDismiss = showMsg('[SLIDE DENIED - 8s]');
+        this._rxTimer = setTimeout(() => {
+          dasEnabled = true;
+          wallKicksEnabled = true;
+          this._rxClear();
+        }, 8000);
+      }
+    },
+  }),
+
   qscan: makeItem({
     label: 'Q-SCAN', cost: 2,
     active: false,
     _targetedUntil: 0,
     buy() {
-      if (gold < this.cost || this.active) return;
-      gold -= this.cost;
-      goldEl.textContent = gold;
+      if (!this._tryBuy()) return;
       this.active = true;
       sendWS({ type: 'queue_scan' });
       disableStore();
@@ -345,7 +391,7 @@ function hardDrop() {
 
 function tryRotate() {
   const rotated = rotate(piece.matrix);
-  const kicks = [0, -1, 1, -2, 2];
+  const kicks = wallKicksEnabled ? [0, -1, 1, -2, 2] : [0];
   for (const kick of kicks) {
     if (!collides(piece, kick, 0, rotated)) {
       piece.matrix = rotated;
@@ -411,6 +457,13 @@ function drawBoard() {
     for (let c = 0; c < piece.matrix[r].length; c++)
       if (piece.matrix[r][c])
         drawCell(boardCtx, piece.x + c, piece.y + r, piece.matrix[r][c]);
+
+  if (!wallKicksEnabled) {
+    boardCtx.strokeStyle = 'rgba(220,80,80,0.7)';
+    boardCtx.lineWidth = 4;
+    boardCtx.strokeRect(2, 2, boardCanvas.width - 4, boardCanvas.height - 4);
+    boardCtx.lineWidth = 1;
+  }
 }
 
 function drawNext() {
@@ -784,7 +837,7 @@ function buildStore() {
     const btn = document.createElement('button');
     btn.className = 'store-btn';
     btn.id = 'store-' + id;
-    btn.textContent = item.label + ' ' + item.cost + 'g';
+    btn.textContent = item.label + ' ' + (DEBUG ? '0' : item.cost) + 'g';
     btn.addEventListener('click', () => item.buy());
     container.appendChild(btn);
   }
