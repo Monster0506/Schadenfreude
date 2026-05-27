@@ -19,6 +19,7 @@ type Msg struct {
 	Lines   int      `json:"lines,omitempty"`
 	Gold    int      `json:"gold,omitempty"`
 	Players []string `json:"players,omitempty"`
+	Creator bool     `json:"creator,omitempty"`
 }
 
 type Player struct {
@@ -31,6 +32,7 @@ type Player struct {
 
 type Room struct {
 	id      string
+	creator string
 	players map[string]*Player
 	mu      sync.Mutex
 }
@@ -120,10 +122,14 @@ func (r *Room) join(p *Player) {
 	for id := range r.players {
 		existing = append(existing, id)
 	}
+	isCreator := len(r.players) == 0
+	if isCreator {
+		r.creator = p.id
+	}
 	r.players[p.id] = p
 	r.mu.Unlock()
 
-	init, _ := json.Marshal(Msg{Type: "init", ID: p.id, Room: r.id, Players: existing})
+	init, _ := json.Marshal(Msg{Type: "init", ID: p.id, Room: r.id, Players: existing, Creator: isCreator})
 	p.send <- init
 
 	joined, _ := json.Marshal(Msg{Type: "player_joined", ID: p.id})
@@ -157,6 +163,15 @@ func (p *Player) handle(data []byte) {
 		p.room.checkWin()
 	case "restart":
 		p.gameOver = false
+	case "start":
+		p.room.mu.Lock()
+		isCreator := p.id == p.room.creator
+		p.room.mu.Unlock()
+		if !isCreator {
+			return
+		}
+		start, _ := json.Marshal(Msg{Type: "start"})
+		p.room.broadcast(start, "")
 	default:
 		msg.ID = p.id
 		relayed, _ := json.Marshal(msg)
