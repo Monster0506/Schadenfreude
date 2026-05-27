@@ -4,13 +4,13 @@ const CELL = 30;
 
 const COLORS = [
   null,
-  '#00f0f0',
-  '#f0f000',
-  '#a000f0',
-  '#00f000',
-  '#f00000',
-  '#0000f0',
-  '#f0a000',
+  '#7ecfd4',
+  '#d4c47a',
+  '#b88fc5',
+  '#82c49a',
+  '#c47a7a',
+  '#7a96c4',
+  '#c4a07a',
 ];
 
 const PIECES = [
@@ -146,7 +146,7 @@ function drawCell(ctx, x, y, colorId, cellSize = CELL) {
 function drawBoard() {
   boardCtx.clearRect(0, 0, boardCanvas.width, boardCanvas.height);
 
-  boardCtx.strokeStyle = '#1e1e2e';
+  boardCtx.strokeStyle = '#222430';
   for (let r = 0; r <= ROWS; r++) {
     boardCtx.beginPath();
     boardCtx.moveTo(0, r * CELL);
