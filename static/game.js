@@ -139,6 +139,7 @@ const STORE_ITEMS = {
     label: 'Q-SCAN', cost: 2,
     active: false,
     _timer: null,
+    _dismiss: null,
     _targetedUntil: 0,
     buy() {
       if (gold < this.cost || this.active) return;
@@ -147,13 +148,14 @@ const STORE_ITEMS = {
       this.active = true;
       sendWS({ type: 'queue_scan' });
       disableStore();
-      showMsg('[queue scanner active for 15s]');
+      this._dismiss = showMsg('[queue scanner active for 15s]');
       this._timer = setTimeout(() => this.deactivate(), 15000);
     },
     deactivate() {
       this.active = false;
       this._targetedUntil = 0;
       clearTimeout(this._timer); this._timer = null;
+      if (this._dismiss) { this._dismiss(); this._dismiss = null; }
       for (const [id] of opponents) {
         const canvas = document.getElementById('qscan-canvas-' + id);
         const goldDiv = document.getElementById('qscan-gold-' + id);
