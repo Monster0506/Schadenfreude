@@ -159,6 +159,7 @@ const STORE_ITEMS = {
 
   slide_denied: makeItem({
     label: 'SLIDE DENIED', cost: 4,
+    msgType: 'slide_denied',
     active: false,
     buy() {
       if (!this._tryBuy()) return;
@@ -195,6 +196,7 @@ const STORE_ITEMS = {
 
   zero_friction: makeItem({
     label: 'ZERO FRICTION', cost: 5,
+    msgType: 'zero_friction',
     active: false,
     buy() {
       if (!this._tryBuy()) return;
@@ -739,6 +741,14 @@ function handleWS(msg) {
         showOverlay('YOU WIN', '', true);
       }
       break;
+  }
+  if (inGame && !gameOver && STORE_ITEMS.shield.active) {
+    const hostile = Object.values(STORE_ITEMS).some(i => i.msgType === msg.type);
+    if (hostile) {
+      STORE_ITEMS.shield.deactivate();
+      showMsg('[attack blocked by shield!]');
+      return;
+    }
   }
   for (const item of Object.values(STORE_ITEMS)) item.onMessage(msg);
 }
