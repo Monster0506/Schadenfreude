@@ -56,6 +56,8 @@ const dasState = {};
 
 let wallKicksEnabled = true;
 let zeroFriction = false;
+let magColActive = false;
+let magColIndex = -1;
 
 let ws = null;
 let myId = null;
@@ -221,6 +223,43 @@ const STORE_ITEMS = {
         this._rxDismiss = showMsg('[ZERO FRICTION - 10s]');
         this._rxTimer = setTimeout(() => {
           zeroFriction = false;
+          this._rxClear();
+        }, 10000);
+      }
+    },
+  }),
+
+  mag_column: makeItem({
+    label: 'MAG COL', cost: 5,
+    msgType: 'mag_column',
+    active: false,
+    buy() {
+      if (!this._tryBuy()) return;
+      const col = Math.floor(Math.random() * COLS);
+      this.active = true;
+      sendWS({ type: 'mag_column', col });
+      disableStore();
+      this._showMsg('[magnet: col ' + (col + 1) + ' sent]');
+      this._timer = setTimeout(() => this.deactivate(), 10000);
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._rxClear();
+      magColActive = false;
+      magColIndex = -1;
+      enableStore();
+    },
+    onMessage(msg) {
+      if (msg.type === 'mag_column' && inGame && !gameOver) {
+        this._rxClear();
+        magColActive = true;
+        magColIndex = msg.col ?? 0;
+        this._rxDismiss = showMsg('[MAGNET: col ' + (magColIndex + 1) + ' - 10s]');
+        this._rxTimer = setTimeout(() => {
+          magColActive = false;
+          magColIndex = -1;
           this._rxClear();
         }, 10000);
       }
@@ -411,6 +450,14 @@ function playChime() {
   });
 }
 
+function applyMagnet() {
+  if (!magColActive) return;
+  const w = piece.matrix[0].length;
+  if (piece.x <= magColIndex && piece.x + w > magColIndex) {
+    piece.x = Math.max(0, Math.min(COLS - w, magColIndex));
+  }
+}
+
 function moveDown() {
   if (!collides(piece, 0, 1)) {
     piece.y++;
@@ -477,6 +524,15 @@ function drawBoard() {
   for (let r = 0; r < ROWS; r++)
     for (let c = 0; c < COLS; c++)
       drawCell(boardCtx, c, r, board[r][c]);
+
+  if (magColActive) {
+    boardCtx.fillStyle = 'rgba(255,160,50,0.13)';
+    boardCtx.fillRect(magColIndex * CELL, 0, CELL, ROWS * CELL);
+    boardCtx.strokeStyle = 'rgba(255,160,50,0.5)';
+    boardCtx.lineWidth = 2;
+    boardCtx.strokeRect(magColIndex * CELL + 1, 0, CELL - 2, ROWS * CELL);
+    boardCtx.lineWidth = 1;
+  }
 
   let ghostY = piece.y;
   while (!collides(piece, 0, ghostY - piece.y + 1)) ghostY++;
@@ -590,6 +646,7 @@ function loop(ts) {
     goldElapsed = 0;
   }
 
+  applyMagnet();
   drawBoard();
   drawNext();
   dropTimer = requestAnimationFrame(loop);

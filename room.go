@@ -23,6 +23,7 @@ type Msg struct {
 	Board      []int    `json:"board,omitempty"`
 	NewCreator string   `json:"new_creator,omitempty"`
 	Pieces     []int    `json:"pieces,omitempty"`
+	Col        int      `json:"col,omitempty"`
 }
 
 type Player struct {
