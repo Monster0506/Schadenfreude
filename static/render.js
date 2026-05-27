@@ -103,14 +103,52 @@ function hideOverlay() {
   overlay.classList.add('hidden');
 }
 
+const msgStack = document.getElementById('msg-stack');
+let _msgExpanded = false;
+const STACK_PEEK = 12;
+const STACK_MAX  = 3;
+
+msgStack.addEventListener('mouseenter', () => { _msgExpanded = true;  _layoutMsgs(); });
+msgStack.addEventListener('mouseleave', () => { _msgExpanded = false; _layoutMsgs(); });
+
+function _layoutMsgs() {
+  const toasts = [...msgStack.querySelectorAll('.ws-msg:not(.ws-msg-out)')];
+  const n = toasts.length;
+  if (n === 0) { msgStack.style.height = '0'; return; }
+
+  const toastH = toasts[n - 1].offsetHeight || 30;
+  const GAP = 6;
+
+  if (_msgExpanded && n > 1) {
+    msgStack.style.height = (n * toastH + (n - 1) * GAP) + 'px';
+    toasts.forEach((el, i) => {
+      const fromTop = n - 1 - i;
+      el.style.transform = `translateY(${fromTop * (toastH + GAP)}px)`;
+      el.style.opacity = '1';
+      el.style.zIndex = n - fromTop;
+    });
+  } else {
+    msgStack.style.height = (toastH + Math.min(n - 1, STACK_MAX - 1) * STACK_PEEK) + 'px';
+    toasts.forEach((el, i) => {
+      const fromTop = n - 1 - i;
+      const depth   = Math.min(fromTop, STACK_MAX - 1);
+      el.style.transform = `translateY(${depth * STACK_PEEK}px) scale(${1 - depth * 0.05})`;
+      el.style.opacity = fromTop === 0 ? '1' : fromTop === 1 ? '0.65' : fromTop >= STACK_MAX ? '0' : '0.35';
+      el.style.zIndex = n - fromTop;
+    });
+  }
+}
+
 function showMsg(text) {
   const el = document.createElement('div');
   el.className = 'ws-msg';
   el.textContent = text;
-  document.getElementById('msg-stack').appendChild(el);
+  msgStack.appendChild(el);
+  requestAnimationFrame(() => _layoutMsgs());
   return () => {
     el.classList.add('ws-msg-out');
-    setTimeout(() => el.remove(), 300);
+    _layoutMsgs();
+    setTimeout(() => { el.remove(); _layoutMsgs(); }, 280);
   };
 }
 

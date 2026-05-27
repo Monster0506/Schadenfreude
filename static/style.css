@@ -199,35 +199,30 @@ button:hover { background: #3a3d4e; }
   position: fixed;
   top: 16px;
   right: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  width: 230px;
   z-index: 50;
-  pointer-events: none;
 }
 
 .ws-msg {
-  background: rgba(13,13,26,0.92);
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: rgba(13,13,26,0.96);
   border: 1px solid #3a3d4e;
   color: #bbb;
   font-family: monospace;
   font-size: 11px;
-  padding: 5px 10px;
-  animation: msg-in 0.15s forwards;
+  padding: 7px 12px;
+  transform-origin: top center;
+  transition: transform 0.22s ease, opacity 0.22s ease;
+  opacity: 0;
+  cursor: default;
 }
 
 .ws-msg-out {
-  animation: msg-out 0.3s forwards;
-}
-
-@keyframes msg-in {
-  from { opacity: 0; transform: translateX(8px); }
-  to   { opacity: 1; transform: translateX(0);   }
-}
-
-@keyframes msg-out {
-  from { opacity: 1; }
-  to   { opacity: 0; }
+  opacity: 0 !important;
+  pointer-events: none;
 }
 
 #overlay {
