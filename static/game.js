@@ -62,6 +62,7 @@ const opponents = new Map();
 const STORE_ITEMS = [
   { id: 'peek',   label: 'PEEK',   cost: 1 },
   { id: 'shield', label: 'SHIELD', cost: 2 },
+  { id: 'qscan',  label: 'Q-SCAN', cost: 2 },
 ];
 
 let peekActive = false;
@@ -70,6 +71,10 @@ let sendBoardUntil = 0;
 
 let shieldActive = false;
 let dismissShieldMsg = null;
+
+let scanActive = false;
+let scanTimer = null;
+let sendQueueUntil = 0;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -159,6 +164,7 @@ function lock() {
 
   piece = drawFromQueue();
   nextPiece = pieceQueue[0];
+  if (Date.now() < sendQueueUntil) sendQueueData();
 
   if (collides(piece)) endGame();
 }
@@ -341,6 +347,9 @@ function backToPregame() {
   sendBoardUntil = 0;
   shieldActive = false;
   if (dismissShieldMsg) { dismissShieldMsg(); dismissShieldMsg = null; }
+  scanActive = false;
+  sendQueueUntil = 0;
+  clearTimeout(scanTimer);
   inGame = false;
   gameOver = false;
   hideOverlay();
@@ -362,6 +371,9 @@ function startGame() {
   peekActive = false; sendBoardUntil = 0;
   shieldActive = false;
   if (dismissShieldMsg) { dismissShieldMsg(); dismissShieldMsg = null; }
+  scanActive = false;
+  sendQueueUntil = 0;
+  clearTimeout(scanTimer);
   clearAllDAS();
   clearTimeout(peekTimer);
   scoreEl.textContent = 0;
@@ -549,6 +561,15 @@ function handleWS(msg) {
         showOverlay('YOU WIN', '', true);
       }
       break;
+    case 'queue_scan':
+      if (inGame && !gameOver) {
+        sendQueueUntil = Date.now() + 16000;
+        sendQueueData();
+      }
+      break;
+    case 'queue_data':
+      if (scanActive) renderQueueScan(msg.id, msg.pieces || [], msg.gold);
+      break;
     case 'attack':
       if (shieldActive) {
         shieldActive = false;
@@ -570,7 +591,9 @@ function addOpponent(id) {
     '<div class="opp-id">' + id + '</div>' +
     '<div class="opp-score" id="opp-score-' + id + '">0</div>' +
     '<div class="opp-sub" id="opp-sub-' + id + '">lvl 1</div>' +
-    '<canvas id="peek-canvas-' + id + '" class="peek-canvas hidden" width="60" height="120"></canvas>';
+    '<canvas id="peek-canvas-' + id + '" class="peek-canvas hidden" width="60" height="120"></canvas>' +
+    '<canvas id="qscan-canvas-' + id + '" class="peek-canvas hidden" width="60" height="20"></canvas>' +
+    '<div id="qscan-gold-' + id + '" class="opp-sub hidden"></div>';
   document.getElementById('opponents').appendChild(card);
   opponents.set(id, { score: 0, level: 1, gameOver: false });
 }
@@ -667,6 +690,46 @@ function endPeek() {
   document.querySelectorAll('.store-btn').forEach(b => { b.disabled = false; });
 }
 
+function sendQueueData() {
+  sendWS({ type: 'queue_data', pieces: pieceQueue.slice(0, 3).map(p => p.id), gold });
+}
+
+function renderQueueScan(id, pieces, oppGold) {
+  const canvas = document.getElementById('qscan-canvas-' + id);
+  const goldDiv = document.getElementById('qscan-gold-' + id);
+  if (!canvas) return;
+  canvas.classList.remove('hidden');
+  if (goldDiv) {
+    goldDiv.classList.remove('hidden');
+    goldDiv.textContent = 'g: ' + oppGold;
+  }
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const cs = 4;
+  pieces.forEach((pid, i) => {
+    if (!pid || !PIECES[pid]) return;
+    const mat = PIECES[pid];
+    const slotX = i * 20;
+    for (let r = 0; r < mat.length; r++)
+      for (let c = 0; c < mat[r].length; c++)
+        if (mat[r][c]) {
+          ctx.fillStyle = COLORS[mat[r][c]];
+          ctx.fillRect(slotX + c * cs, r * cs, cs - 1, cs - 1);
+        }
+  });
+}
+
+function endQueueScan() {
+  scanActive = false;
+  for (const [id] of opponents) {
+    const canvas = document.getElementById('qscan-canvas-' + id);
+    const goldDiv = document.getElementById('qscan-gold-' + id);
+    if (canvas) canvas.classList.add('hidden');
+    if (goldDiv) goldDiv.classList.add('hidden');
+  }
+  document.querySelectorAll('.store-btn').forEach(b => { b.disabled = false; });
+}
+
 function applyAttack() {
   board.splice(0, 1);
   const gap = Math.floor(Math.random() * COLS);
@@ -695,6 +758,17 @@ const ITEM_HANDLERS = {
     shieldActive = true;
     if (dismissShieldMsg) dismissShieldMsg();
     dismissShieldMsg = showMsg('[shield active]');
+  },
+  qscan: () => {
+    if (gold < 2 || scanActive) return;
+    gold -= 2;
+    goldEl.textContent = gold;
+    scanActive = true;
+    sendWS({ type: 'queue_scan' });
+    document.querySelectorAll('.store-btn').forEach(b => { b.disabled = true; });
+    showMsg('[queue scanner active for 15s]');
+    clearTimeout(scanTimer);
+    scanTimer = setTimeout(endQueueScan, 15000);
   },
 };
 
