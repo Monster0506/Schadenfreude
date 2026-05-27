@@ -6,48 +6,31 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="lobby">
-    <div id="lobby-inner">
-      <div id="lobby-title">TETRIS</div>
-      <div id="lobby-join">
-        <input id="room-input" placeholder="room code" maxlength="12" autocomplete="off" spellcheck="false" />
-        <button id="join-btn">JOIN</button>
-      </div>
-      <div class="lobby-sep">or</div>
-      <button id="create-btn">CREATE ROOM</button>
-      <div id="lobby-status" class="hidden">
-        <div>room: <span id="room-display"></span></div>
-        <div id="player-count"></div>
-        <button id="copy-btn">copy link</button>
-        <div class="lobby-hint">press enter to start</div>
-      </div>
+  <div id="lobby-inner">
+    <div id="lobby-title">TETRIS</div>
+    <div id="lobby-join">
+      <input id="room-input" placeholder="room code" maxlength="12" autocomplete="off" spellcheck="false" />
+      <button id="join-btn">JOIN</button>
     </div>
+    <div class="lobby-sep">or</div>
+    <button id="create-btn">CREATE ROOM</button>
   </div>
-
-  <div id="game" class="hidden">
-    <div id="opponents"></div>
-    <div id="container">
-      <canvas id="board" width="300" height="600"></canvas>
-      <div id="sidebar">
-        <div class="label">NEXT</div>
-        <canvas id="next" width="120" height="120"></canvas>
-        <div class="label">SCORE</div>
-        <div id="score">0</div>
-        <div class="label">LEVEL</div>
-        <div id="level">1</div>
-        <div class="label">LINES</div>
-        <div id="lines">0</div>
-        <div class="label">GOLD</div>
-        <div id="gold">0</div>
-      </div>
-    </div>
-  </div>
-
-  <div id="overlay" class="hidden">
-    <div id="overlay-text"></div>
-    <div id="overlay-sub"></div>
-  </div>
-
-  <script src="game.js"></script>
+  <script>
+    function randCode() {
+      const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
+      return Array.from({length: 6}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    }
+    function go(code) {
+      location.href = '/game.html?room=' + code.toLowerCase().trim();
+    }
+    document.getElementById('create-btn').addEventListener('click', () => go(randCode()));
+    document.getElementById('join-btn').addEventListener('click', () => {
+      const v = document.getElementById('room-input').value.trim();
+      if (v) go(v);
+    });
+    document.getElementById('room-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter' && e.target.value.trim()) go(e.target.value.trim());
+    });
+  </script>
 </body>
 </html>

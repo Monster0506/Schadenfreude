@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Tetris</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="pregame">
+    <div id="pregame-inner">
+      <div id="room-line">room: <span id="room-display"></span> <button id="copy-btn">copy link</button></div>
+      <div id="player-count">players: 1</div>
+      <div id="waiting-msg">waiting for players...</div>
+      <button id="begin-btn" class="hidden">BEGIN GAME</button>
+    </div>
+  </div>
+
+  <div id="game" class="hidden">
+    <div id="opponents"></div>
+    <div id="container">
+      <canvas id="board" width="300" height="600"></canvas>
+      <div id="sidebar">
+        <div class="label">NEXT</div>
+        <canvas id="next" width="120" height="120"></canvas>
+        <div class="label">SCORE</div>
+        <div id="score">0</div>
+        <div class="label">LEVEL</div>
+        <div id="level">1</div>
+        <div class="label">LINES</div>
+        <div id="lines">0</div>
+        <div class="label">GOLD</div>
+        <div id="gold">0</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="overlay" class="hidden">
+    <div id="overlay-text"></div>
+    <div id="overlay-sub"></div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>

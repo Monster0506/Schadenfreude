@@ -46,14 +46,10 @@ let elapsed = 0;
 let goldElapsed = 0;
 let inGame = false;
 
-// --- websocket state ---
 let ws = null;
 let myId = null;
 let roomId = null;
-let inRoom = false;
 const opponents = new Map();
-
-// --- game logic ---
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -131,9 +127,7 @@ function lock() {
   piece = nextPiece;
   nextPiece = randomPiece();
 
-  if (collides(piece)) {
-    endGame();
-  }
+  if (collides(piece)) endGame();
 }
 
 function spawnGold() {
@@ -168,14 +162,11 @@ function playChime() {
   melody.forEach((root, noteIndex) => {
     const startTime = ctx.currentTime + (noteIndex * gap);
     const noteGain = ctx.createGain();
-
     noteGain.gain.setValueAtTime(0, startTime);
     noteGain.gain.linearRampToValueAtTime(0.45, startTime + 0.005);
     noteGain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.45);
-
     noteGain.connect(masterGain);
     noteGain.connect(delay);
-
     [
       { ratio: 1.0,  type: 'sine', volume: 0.6  },
       { ratio: 2.0,  type: 'sine', volume: 0.15 },
@@ -237,7 +228,6 @@ function drawCell(ctx, x, y, colorId, cellSize = CELL) {
 
 function drawBoard() {
   boardCtx.clearRect(0, 0, boardCanvas.width, boardCanvas.height);
-
   boardCtx.strokeStyle = '#222430';
   for (let r = 0; r <= ROWS; r++) {
     boardCtx.beginPath();
@@ -251,7 +241,6 @@ function drawBoard() {
     boardCtx.lineTo(c * CELL, ROWS * CELL);
     boardCtx.stroke();
   }
-
   for (let r = 0; r < ROWS; r++)
     for (let c = 0; c < COLS; c++)
       drawCell(boardCtx, c, r, board[r][c]);
@@ -266,7 +255,6 @@ function drawBoard() {
           boardCtx.fillRect((piece.x + c) * CELL + 1, (ghostY + r) * CELL + 1, CELL - 2, CELL - 2);
         }
   }
-
   for (let r = 0; r < piece.matrix.length; r++)
     for (let c = 0; c < piece.matrix[r].length; c++)
       if (piece.matrix[r][c])
@@ -367,19 +355,15 @@ document.addEventListener('keydown', e => {
   }
 });
 
-// --- websocket ---
-
 function connectWS(room) {
-  ws = new WebSocket(`ws://${location.host}/ws?room=${room}`);
+  ws = new WebSocket('ws://' + location.host + '/ws?room=' + room);
   ws.onmessage = e => handleWS(JSON.parse(e.data));
   ws.onerror = () => console.error('ws error');
   ws.onclose = () => console.log('ws closed');
 }
 
 function sendWS(data) {
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(data));
-  }
+  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(data));
 }
 
 function sendScore() {
@@ -390,20 +374,17 @@ function handleWS(msg) {
   switch (msg.type) {
     case 'init':
       myId = msg.id;
-      document.getElementById('room-display').textContent = msg.room;
-      document.getElementById('player-count').textContent = 'players: ' + (msg.players.length + 1);
-      document.getElementById('lobby-status').classList.remove('hidden');
       for (const id of (msg.players || [])) addOpponent(id);
-      inRoom = true;
+      updateBeginState();
       break;
     case 'player_joined':
       addOpponent(msg.id);
-      updatePlayerCount();
+      updateBeginState();
       sendScore();
       break;
     case 'player_left':
       removeOpponent(msg.id);
-      updatePlayerCount();
+      updateBeginState();
       break;
     case 'score':
       updateOpponent(msg.id, msg);
@@ -444,7 +425,7 @@ function updateOpponent(id, data) {
   if (!opponents.has(id)) addOpponent(id);
   const opp = opponents.get(id);
   Object.assign(opp, data);
-  const se = document.getElementById('opp-score-' + id);
+  const se  = document.getElementById('opp-score-' + id);
   const sub = document.getElementById('opp-sub-' + id);
   if (se)  se.textContent  = opp.score;
   if (sub) sub.textContent = 'lvl ' + opp.level;
@@ -456,59 +437,42 @@ function markOpponentOut(id) {
   if (opponents.has(id)) opponents.get(id).gameOver = true;
 }
 
-function updatePlayerCount() {
-  const el = document.getElementById('player-count');
-  if (el) el.textContent = 'players: ' + (opponents.size + 1);
-}
-
-// --- lobby ---
-
-function randRoomCode() {
-  const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
-  return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-}
-
-function joinRoom(code) {
-  code = code.toLowerCase();
-  roomId = code;
-  history.replaceState(null, '', '?room=' + code);
-  connectWS(code);
+function updateBeginState() {
+  const count = opponents.size + 1;
+  document.getElementById('player-count').textContent = 'players: ' + count;
+  const waitingMsg = document.getElementById('waiting-msg');
+  const beginBtn   = document.getElementById('begin-btn');
+  if (opponents.size > 0) {
+    waitingMsg.classList.add('hidden');
+    beginBtn.classList.remove('hidden');
+  } else {
+    waitingMsg.classList.remove('hidden');
+    beginBtn.classList.add('hidden');
+  }
 }
 
 function enterGame() {
-  document.getElementById('lobby').classList.add('hidden');
+  document.getElementById('pregame').classList.add('hidden');
   document.getElementById('game').classList.remove('hidden');
   inGame = true;
   startGame();
 }
 
-const roomInput = document.getElementById('room-input');
-const urlRoom = new URLSearchParams(location.search).get('room');
-if (urlRoom) roomInput.value = urlRoom;
-
-document.getElementById('create-btn').addEventListener('click', () => {
-  const code = randRoomCode();
-  roomInput.value = code;
-  joinRoom(code);
-});
-
-document.getElementById('join-btn').addEventListener('click', () => {
-  const code = roomInput.value.trim();
-  if (code) joinRoom(code);
-});
-
-roomInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    const code = roomInput.value.trim();
-    if (code) joinRoom(code);
-  }
-});
-
-document.getElementById('copy-btn').addEventListener('click', () => {
-  navigator.clipboard.writeText(location.origin + location.pathname + '?room=' + roomId);
-});
-
-document.addEventListener('keydown', e => {
-  if (inGame) return;
-  if (e.key === 'Enter' && inRoom) enterGame();
-});
+const roomParam = new URLSearchParams(location.search).get('room');
+if (!roomParam) {
+  location.href = '/';
+} else {
+  roomId = roomParam;
+  document.getElementById('room-display').textContent = roomId;
+  document.getElementById('copy-btn').addEventListener('click', () => {
+    navigator.clipboard.writeText(location.href);
+  });
+  document.getElementById('begin-btn').addEventListener('click', enterGame);
+  document.addEventListener('keydown', e => {
+    if (inGame) return;
+    if (e.key === 'Enter' && !document.getElementById('begin-btn').classList.contains('hidden')) {
+      enterGame();
+    }
+  });
+  connectWS(roomId);
+}
