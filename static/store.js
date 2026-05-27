@@ -265,6 +265,7 @@ const STORE_ITEMS = {
 
   qscan: makeItem({
     label: 'Q-SCAN', cost: 2, cat: 'intel',
+    msgType: 'queue_scan',
     active: false,
     _targetedUntil: 0,
     _activate() {
