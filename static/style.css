@@ -143,3 +143,5 @@ button:hover { background: #3a3d4e; }
 #overlay.hidden { display: none; }
 #overlay-text { font-size: 32px; }
 #overlay-sub { font-size: 14px; color: #aaa; }
+#play-again-btn { margin-top: 8px; font-size: 14px; padding: 8px 20px; }
+#play-again-btn.hidden { display: none; }

@@ -283,10 +283,13 @@ function drawNext() {
         drawCell(nextCtx, offX + c, offY + r, mat[r][c], cellSize);
 }
 
-function showOverlay(text, sub) {
+function showOverlay(text, sub, playAgain = false) {
   overlayText.textContent = text;
   overlaySub.textContent = sub;
   overlay.classList.remove('hidden');
+  const btn = document.getElementById('play-again-btn');
+  if (playAgain) btn.classList.remove('hidden');
+  else btn.classList.add('hidden');
 }
 
 function hideOverlay() {
@@ -297,7 +300,25 @@ function endGame() {
   gameOver = true;
   cancelAnimationFrame(dropTimer);
   sendWS({ type: 'game_over' });
-  showOverlay('GAME OVER', 'press enter to play again');
+  showOverlay('GAME OVER', '', true);
+}
+
+function backToPregame() {
+  cancelAnimationFrame(dropTimer);
+  clearTimeout(peekTimer);
+  peekActive = false;
+  sendBoardUntil = 0;
+  inGame = false;
+  gameOver = false;
+  hideOverlay();
+  for (const [id] of opponents) {
+    const canvas = document.getElementById('peek-canvas-' + id);
+    if (canvas) canvas.classList.add('hidden');
+  }
+  document.querySelectorAll('.store-btn').forEach(b => { b.disabled = false; });
+  document.getElementById('game').classList.add('hidden');
+  document.getElementById('pregame').classList.remove('hidden');
+  updateBeginState();
 }
 
 function startGame() {
@@ -345,7 +366,7 @@ function loop(ts) {
 document.addEventListener('keydown', e => {
   if (!inGame) return;
   if (gameOver) {
-    if (e.key === 'Enter') startGame();
+    if (e.key === 'Enter') sendWS({ type: 'play_again' });
     return;
   }
   switch (e.key) {
@@ -412,14 +433,24 @@ function handleWS(msg) {
     case 'board_state':
       if (peekActive) renderPeekBoard(msg.id, msg.board);
       break;
+    case 'play_again':
+      if (msg.id === myId) {
+        isCreator = msg.new_creator === myId;
+        backToPregame();
+      }
+      break;
     case 'start':
-      if (!inGame) enterGame();
+      if (!inGame) {
+        enterGame();
+      } else if (gameOver) {
+        startGame();
+      }
       break;
     case 'win':
       if (!gameOver && inGame) {
         gameOver = true;
         cancelAnimationFrame(dropTimer);
-        showOverlay('YOU WIN', 'press enter to play again');
+        showOverlay('YOU WIN', '', true);
       }
       break;
   }
@@ -557,6 +588,9 @@ if (!roomParam) {
     if (e.key === 'Enter' && isCreator && !document.getElementById('begin-btn').classList.contains('hidden')) {
       sendWS({ type: 'start' });
     }
+  });
+  document.getElementById('play-again-btn').addEventListener('click', () => {
+    sendWS({ type: 'play_again' });
   });
   connectWS(roomId);
 }
