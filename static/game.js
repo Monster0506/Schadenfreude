@@ -55,6 +55,7 @@ let dasEnabled = true;
 const dasState = {};
 
 let wallKicksEnabled = true;
+let zeroFriction = false;
 
 let ws = null;
 let myId = null;
@@ -188,6 +189,38 @@ const STORE_ITEMS = {
           wallKicksEnabled = true;
           this._rxClear();
         }, 8000);
+      }
+    },
+  }),
+
+  zero_friction: makeItem({
+    label: 'ZERO FRICTION', cost: 5,
+    active: false,
+    buy() {
+      if (!this._tryBuy()) return;
+      this.active = true;
+      sendWS({ type: 'zero_friction' });
+      disableStore();
+      this._showMsg('[zero friction sent]');
+      this._timer = setTimeout(() => this.deactivate(), 10000);
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._rxClear();
+      zeroFriction = false;
+      enableStore();
+    },
+    onMessage(msg) {
+      if (msg.type === 'zero_friction' && inGame && !gameOver) {
+        this._rxClear();
+        zeroFriction = true;
+        this._rxDismiss = showMsg('[ZERO FRICTION - 10s]');
+        this._rxTimer = setTimeout(() => {
+          zeroFriction = false;
+          this._rxClear();
+        }, 10000);
       }
     },
   }),
@@ -464,6 +497,12 @@ function drawBoard() {
     boardCtx.strokeRect(2, 2, boardCanvas.width - 4, boardCanvas.height - 4);
     boardCtx.lineWidth = 1;
   }
+  if (zeroFriction) {
+    boardCtx.strokeStyle = 'rgba(80,140,220,0.7)';
+    boardCtx.lineWidth = 4;
+    boardCtx.strokeRect(2, 2, boardCanvas.width - 4, boardCanvas.height - 4);
+    boardCtx.lineWidth = 1;
+  }
 }
 
 function drawNext() {
@@ -586,19 +625,27 @@ document.addEventListener('keydown', e => {
   }
   switch (e.key) {
     case 'ArrowLeft':
-      if (!paused && dasEnabled) {
+      if (!paused) {
         e.preventDefault();
-        startDAS('left', () => { if (!collides(piece, -1, 0)) piece.x--; });
-      } else if (!paused) {
-        if (!collides(piece, -1, 0)) piece.x--;
+        if (zeroFriction) {
+          while (!collides(piece, -1, 0)) piece.x--;
+        } else if (dasEnabled) {
+          startDAS('left', () => { if (!collides(piece, -1, 0)) piece.x--; });
+        } else {
+          if (!collides(piece, -1, 0)) piece.x--;
+        }
       }
       break;
     case 'ArrowRight':
-      if (!paused && dasEnabled) {
+      if (!paused) {
         e.preventDefault();
-        startDAS('right', () => { if (!collides(piece, 1, 0)) piece.x++; });
-      } else if (!paused) {
-        if (!collides(piece, 1, 0)) piece.x++;
+        if (zeroFriction) {
+          while (!collides(piece, 1, 0)) piece.x++;
+        } else if (dasEnabled) {
+          startDAS('right', () => { if (!collides(piece, 1, 0)) piece.x++; });
+        } else {
+          if (!collides(piece, 1, 0)) piece.x++;
+        }
       }
       break;
     case 'ArrowDown':
