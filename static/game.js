@@ -167,7 +167,7 @@ const STORE_ITEMS = {
         const canvas = document.getElementById('qscan-canvas-' + id);
         const goldDiv = document.getElementById('qscan-gold-' + id);
         if (canvas) canvas.classList.add('hidden');
-        if (goldDiv) goldDiv.classList.add('hidden');
+        if (goldDiv) { goldDiv.classList.add('hidden'); goldDiv.textContent = ''; }
       }
       enableStore();
     },
