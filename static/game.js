@@ -49,6 +49,7 @@ let inGame = false;
 let ws = null;
 let myId = null;
 let roomId = null;
+let isCreator = false;
 const opponents = new Map();
 
 function createBoard() {
@@ -374,6 +375,7 @@ function handleWS(msg) {
   switch (msg.type) {
     case 'init':
       myId = msg.id;
+      isCreator = msg.creator || false;
       for (const id of (msg.players || [])) addOpponent(id);
       updateBeginState();
       break;
@@ -391,6 +393,9 @@ function handleWS(msg) {
       break;
     case 'game_over':
       markOpponentOut(msg.id);
+      break;
+    case 'start':
+      if (!inGame) enterGame();
       break;
     case 'win':
       if (!gameOver && inGame) {
@@ -438,15 +443,15 @@ function markOpponentOut(id) {
 }
 
 function updateBeginState() {
-  const count = opponents.size + 1;
-  document.getElementById('player-count').textContent = 'players: ' + count;
+  document.getElementById('player-count').textContent = 'players: ' + (opponents.size + 1);
   const waitingMsg = document.getElementById('waiting-msg');
   const beginBtn   = document.getElementById('begin-btn');
-  if (opponents.size > 0) {
+  if (isCreator && opponents.size > 0) {
     waitingMsg.classList.add('hidden');
     beginBtn.classList.remove('hidden');
   } else {
     waitingMsg.classList.remove('hidden');
+    waitingMsg.textContent = isCreator ? 'waiting for players...' : 'waiting for host to start...';
     beginBtn.classList.add('hidden');
   }
 }
@@ -467,11 +472,11 @@ if (!roomParam) {
   document.getElementById('copy-btn').addEventListener('click', () => {
     navigator.clipboard.writeText(location.href);
   });
-  document.getElementById('begin-btn').addEventListener('click', enterGame);
+  document.getElementById('begin-btn').addEventListener('click', () => sendWS({ type: 'start' }));
   document.addEventListener('keydown', e => {
     if (inGame) return;
-    if (e.key === 'Enter' && !document.getElementById('begin-btn').classList.contains('hidden')) {
-      enterGame();
+    if (e.key === 'Enter' && isCreator && !document.getElementById('begin-btn').classList.contains('hidden')) {
+      sendWS({ type: 'start' });
     }
   });
   connectWS(roomId);
