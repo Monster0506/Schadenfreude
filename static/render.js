@@ -1,0 +1,157 @@
+function drawCell(ctx, x, y, colorId, cellSize = CELL) {
+  if (!colorId) return;
+  if (colorId === 8) {
+    const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 250);
+    ctx.fillStyle = `hsl(45, 90%, ${45 + pulse * 20}%)`;
+    ctx.fillRect(x * cellSize + 1, y * cellSize + 1, cellSize - 2, cellSize - 2);
+    ctx.fillStyle = `rgba(255,255,255,${0.2 + pulse * 0.35})`;
+    ctx.fillRect(x * cellSize + 1, y * cellSize + 1, cellSize - 2, 4);
+    return;
+  }
+  if (colorId === 9) {
+    ctx.fillStyle = COLORS[9];
+    ctx.fillRect(x * cellSize + 1, y * cellSize + 1, cellSize - 2, cellSize - 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.fillRect(x * cellSize + 1, y * cellSize + 1, cellSize - 2, 4);
+    return;
+  }
+  ctx.fillStyle = COLORS[colorId];
+  ctx.fillRect(x * cellSize + 1, y * cellSize + 1, cellSize - 2, cellSize - 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  ctx.fillRect(x * cellSize + 1, y * cellSize + 1, cellSize - 2, 4);
+}
+
+function drawBoard() {
+  boardCtx.clearRect(0, 0, boardCanvas.width, boardCanvas.height);
+  boardCtx.strokeStyle = '#222430';
+  for (let r = 0; r <= ROWS; r++) {
+    boardCtx.beginPath();
+    boardCtx.moveTo(0, r * CELL);
+    boardCtx.lineTo(COLS * CELL, r * CELL);
+    boardCtx.stroke();
+  }
+  for (let c = 0; c <= COLS; c++) {
+    boardCtx.beginPath();
+    boardCtx.moveTo(c * CELL, 0);
+    boardCtx.lineTo(c * CELL, ROWS * CELL);
+    boardCtx.stroke();
+  }
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      drawCell(boardCtx, c, r, board[r][c]);
+
+  if (magColActive) {
+    boardCtx.fillStyle = 'rgba(255,160,50,0.13)';
+    boardCtx.fillRect(magColIndex * CELL, 0, CELL, ROWS * CELL);
+    boardCtx.strokeStyle = 'rgba(255,160,50,0.5)';
+    boardCtx.lineWidth = 2;
+    boardCtx.strokeRect(magColIndex * CELL + 1, 0, CELL - 2, ROWS * CELL);
+    boardCtx.lineWidth = 1;
+  }
+
+  let ghostY = piece.y;
+  while (!collides(piece, 0, ghostY - piece.y + 1)) ghostY++;
+  if (ghostY !== piece.y) {
+    for (let r = 0; r < piece.matrix.length; r++)
+      for (let c = 0; c < piece.matrix[r].length; c++)
+        if (piece.matrix[r][c]) {
+          boardCtx.fillStyle = 'rgba(255,255,255,0.1)';
+          boardCtx.fillRect((piece.x + c) * CELL + 1, (ghostY + r) * CELL + 1, CELL - 2, CELL - 2);
+        }
+  }
+  for (let r = 0; r < piece.matrix.length; r++)
+    for (let c = 0; c < piece.matrix[r].length; c++)
+      if (piece.matrix[r][c])
+        drawCell(boardCtx, piece.x + c, piece.y + r, piece.matrix[r][c]);
+
+  if (!wallKicksEnabled) {
+    boardCtx.strokeStyle = 'rgba(220,80,80,0.7)';
+    boardCtx.lineWidth = 4;
+    boardCtx.strokeRect(2, 2, boardCanvas.width - 4, boardCanvas.height - 4);
+    boardCtx.lineWidth = 1;
+  }
+  if (zeroFriction) {
+    boardCtx.strokeStyle = 'rgba(80,140,220,0.7)';
+    boardCtx.lineWidth = 4;
+    boardCtx.strokeRect(2, 2, boardCanvas.width - 4, boardCanvas.height - 4);
+    boardCtx.lineWidth = 1;
+  }
+}
+
+function drawNext() {
+  const cellSize = 24;
+  nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
+  const mat = nextPiece.matrix;
+  const offX = Math.floor((5 - mat[0].length) / 2);
+  const offY = Math.floor((5 - mat.length) / 2);
+  for (let r = 0; r < mat.length; r++)
+    for (let c = 0; c < mat[r].length; c++)
+      if (mat[r][c])
+        drawCell(nextCtx, offX + c, offY + r, mat[r][c], cellSize);
+}
+
+function showOverlay(text, sub, playAgain = false) {
+  overlayText.textContent = text;
+  overlaySub.textContent = sub;
+  overlay.classList.remove('hidden');
+  const btn = document.getElementById('play-again-btn');
+  if (playAgain) btn.classList.remove('hidden');
+  else btn.classList.add('hidden');
+}
+
+function hideOverlay() {
+  overlay.classList.add('hidden');
+}
+
+function showMsg(text) {
+  const el = document.createElement('div');
+  el.className = 'ws-msg';
+  el.textContent = text;
+  document.getElementById('msg-stack').appendChild(el);
+  return () => {
+    el.classList.add('ws-msg-out');
+    setTimeout(() => el.remove(), 300);
+  };
+}
+
+function renderPeekBoard(id, flat) {
+  const canvas = document.getElementById('peek-canvas-' + id);
+  if (!canvas) return;
+  canvas.classList.remove('hidden');
+  const ctx = canvas.getContext('2d');
+  const cs = 6;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const v = flat[r * COLS + c];
+      if (!v) continue;
+      ctx.fillStyle = v === 8 ? 'gold' : COLORS[v];
+      ctx.fillRect(c * cs, r * cs, cs - 1, cs - 1);
+    }
+  }
+}
+
+function renderQueueScan(id, pieces, oppGold) {
+  const canvas = document.getElementById('qscan-canvas-' + id);
+  const goldDiv = document.getElementById('qscan-gold-' + id);
+  if (!canvas) return;
+  canvas.classList.remove('hidden');
+  if (goldDiv) {
+    goldDiv.classList.remove('hidden');
+    goldDiv.textContent = 'g: ' + oppGold;
+  }
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const cs = 4;
+  pieces.forEach((pid, i) => {
+    if (!pid || !PIECES[pid]) return;
+    const mat = PIECES[pid];
+    const slotX = i * 20;
+    for (let r = 0; r < mat.length; r++)
+      for (let c = 0; c < mat[r].length; c++)
+        if (mat[r][c]) {
+          ctx.fillStyle = COLORS[mat[r][c]];
+          ctx.fillRect(slotX + c * cs, r * cs, cs - 1, cs - 1);
+        }
+  });
+}
