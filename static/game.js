@@ -13,6 +13,7 @@ const COLORS = [
   '#7a96c4',
   '#c4a07a',
   'gold',
+  '#444455',
 ];
 
 const PIECES = [
@@ -28,6 +29,7 @@ const PIECES = [
 
 const POINTS = [0, 100, 300, 500, 800];
 const LEVEL_SPEED = (level) => Math.max(50, 1000 - (level - 1) * 90);
+const QUEUE_SIZE = 10;
 
 const boardCanvas = document.getElementById('board');
 const boardCtx    = boardCanvas.getContext('2d');
@@ -41,10 +43,15 @@ const overlay     = document.getElementById('overlay');
 const overlayText = document.getElementById('overlay-text');
 const overlaySub  = document.getElementById('overlay-sub');
 
-let board, piece, nextPiece, score, level, lines, gold, paused, gameOver, dropTimer, lastTime;
+let board, piece, nextPiece, pieceQueue, score, level, lines, gold, paused, gameOver, dropTimer, lastTime;
 let elapsed = 0;
 let goldElapsed = 0;
 let inGame = false;
+
+const DAS_DELAY  = 167;
+const DAS_REPEAT = 33;
+let dasEnabled = true;
+const dasState = {};
 
 let ws = null;
 let myId = null;
@@ -64,10 +71,22 @@ function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
 }
 
-function randomPiece() {
-  const id = Math.floor(Math.random() * 7) + 1;
+function makePiece(id) {
   const matrix = PIECES[id].map(row => [...row]);
   return { id, matrix, x: Math.floor(COLS / 2) - Math.floor(matrix[0].length / 2), y: 0 };
+}
+
+function fillQueue() {
+  while (pieceQueue.length < QUEUE_SIZE) {
+    pieceQueue.push(makePiece(Math.floor(Math.random() * 7) + 1));
+  }
+}
+
+function drawFromQueue() {
+  fillQueue();
+  const p = pieceQueue.shift();
+  fillQueue();
+  return p;
 }
 
 function rotate(matrix) {
@@ -104,7 +123,7 @@ function lock() {
   let cleared = 0;
   let goldCleared = 0;
   for (let r = ROWS - 1; r >= 0; r--) {
-    if (board[r].every(v => v)) {
+    if (board[r].every(v => v) && !board[r].includes(9)) {
       goldCleared += board[r].filter(v => v === 8).length;
       board.splice(r, 1);
       board.unshift(new Array(COLS).fill(0));
@@ -134,8 +153,8 @@ function lock() {
   if (scoreChanged) sendScore();
   if (Date.now() < sendBoardUntil) sendBoardState();
 
-  piece = nextPiece;
-  nextPiece = randomPiece();
+  piece = drawFromQueue();
+  nextPiece = pieceQueue[0];
 
   if (collides(piece)) endGame();
 }
@@ -144,7 +163,7 @@ function spawnGold() {
   const candidates = [];
   for (let r = 0; r < ROWS; r++)
     for (let c = 0; c < COLS; c++)
-      if (board[r][c] && board[r][c] !== 8)
+      if (board[r][c] && board[r][c] !== 8 && board[r][c] !== 9)
         candidates.push([r, c]);
   if (candidates.length === 0) return;
   const [r, c] = candidates[Math.floor(Math.random() * candidates.length)];
@@ -230,6 +249,13 @@ function drawCell(ctx, x, y, colorId, cellSize = CELL) {
     ctx.fillRect(x * cellSize + 1, y * cellSize + 1, cellSize - 2, 4);
     return;
   }
+  if (colorId === 9) {
+    ctx.fillStyle = COLORS[9];
+    ctx.fillRect(x * cellSize + 1, y * cellSize + 1, cellSize - 2, cellSize - 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.fillRect(x * cellSize + 1, y * cellSize + 1, cellSize - 2, 4);
+    return;
+  }
   ctx.fillStyle = COLORS[colorId];
   ctx.fillRect(x * cellSize + 1, y * cellSize + 1, cellSize - 2, cellSize - 2);
   ctx.fillStyle = 'rgba(255,255,255,0.15)';
@@ -305,6 +331,7 @@ function endGame() {
 
 function backToPregame() {
   cancelAnimationFrame(dropTimer);
+  clearAllDAS();
   clearTimeout(peekTimer);
   peekActive = false;
   sendBoardUntil = 0;
@@ -327,13 +354,16 @@ function startGame() {
   paused = false; gameOver = false;
   elapsed = 0; goldElapsed = 0;
   peekActive = false; sendBoardUntil = 0;
+  clearAllDAS();
   clearTimeout(peekTimer);
   scoreEl.textContent = 0;
   levelEl.textContent = 1;
   linesEl.textContent = 0;
   goldEl.textContent = 0;
-  piece = randomPiece();
-  nextPiece = randomPiece();
+  pieceQueue = [];
+  fillQueue();
+  piece = drawFromQueue();
+  nextPiece = pieceQueue[0];
   hideOverlay();
   lastTime = 0;
   sendWS({ type: 'restart' });
@@ -363,6 +393,30 @@ function loop(ts) {
   dropTimer = requestAnimationFrame(loop);
 }
 
+function startDAS(key, action) {
+  if (dasState[key]) return;
+  action();
+  const delay = setTimeout(() => {
+    const interval = setInterval(() => {
+      if (!inGame || paused || gameOver) { clearAllDAS(); return; }
+      action();
+    }, DAS_REPEAT);
+    dasState[key] = { interval };
+  }, DAS_DELAY);
+  dasState[key] = { delay };
+}
+
+function stopDAS(key) {
+  if (!dasState[key]) return;
+  clearTimeout(dasState[key].delay);
+  clearInterval(dasState[key].interval);
+  delete dasState[key];
+}
+
+function clearAllDAS() {
+  for (const key of Object.keys(dasState)) stopDAS(key);
+}
+
 document.addEventListener('keydown', e => {
   if (!inGame) return;
   if (gameOver) {
@@ -370,14 +424,36 @@ document.addEventListener('keydown', e => {
     return;
   }
   switch (e.key) {
-    case 'ArrowLeft':  if (!paused && !collides(piece, -1, 0)) piece.x--; break;
-    case 'ArrowRight': if (!paused && !collides(piece,  1, 0)) piece.x++; break;
-    case 'ArrowDown':  if (!paused) { moveDown(); elapsed = 0; } break;
+    case 'ArrowLeft':
+      if (!paused && dasEnabled) {
+        e.preventDefault();
+        startDAS('left', () => { if (!collides(piece, -1, 0)) piece.x--; });
+      } else if (!paused) {
+        if (!collides(piece, -1, 0)) piece.x--;
+      }
+      break;
+    case 'ArrowRight':
+      if (!paused && dasEnabled) {
+        e.preventDefault();
+        startDAS('right', () => { if (!collides(piece, 1, 0)) piece.x++; });
+      } else if (!paused) {
+        if (!collides(piece, 1, 0)) piece.x++;
+      }
+      break;
+    case 'ArrowDown':
+      if (!paused && dasEnabled) {
+        e.preventDefault();
+        startDAS('down', () => { moveDown(); elapsed = 0; });
+      } else if (!paused) {
+        moveDown(); elapsed = 0;
+      }
+      break;
     case 'ArrowUp':    if (!paused) tryRotate(); break;
     case ' ':          if (!paused) hardDrop(); e.preventDefault(); break;
     case 'p': case 'P':
       paused = !paused;
       if (paused) {
+        clearAllDAS();
         showOverlay('PAUSED', 'press P to continue');
       } else {
         hideOverlay();
@@ -385,6 +461,15 @@ document.addEventListener('keydown', e => {
         dropTimer = requestAnimationFrame(loop);
       }
       break;
+  }
+});
+
+document.addEventListener('keyup', e => {
+  if (!dasEnabled) return;
+  switch (e.key) {
+    case 'ArrowLeft':  stopDAS('left');  break;
+    case 'ArrowRight': stopDAS('right'); break;
+    case 'ArrowDown':  stopDAS('down');  break;
   }
 });
 
