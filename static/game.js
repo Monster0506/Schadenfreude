@@ -59,22 +59,119 @@ let roomId = null;
 let isCreator = false;
 const opponents = new Map();
 
-const STORE_ITEMS = [
-  { id: 'peek',   label: 'PEEK',   cost: 1 },
-  { id: 'shield', label: 'SHIELD', cost: 2 },
-  { id: 'qscan',  label: 'Q-SCAN', cost: 2 },
-];
+function disableStore() {
+  document.querySelectorAll('.store-btn').forEach(b => { b.disabled = true; });
+}
 
-let peekActive = false;
-let peekTimer = null;
-let sendBoardUntil = 0;
+function enableStore() {
+  document.querySelectorAll('.store-btn').forEach(b => { b.disabled = false; });
+}
 
-let shieldActive = false;
-let dismissShieldMsg = null;
+const STORE_ITEMS = {
+  peek: {
+    label: 'PEEK', cost: 1,
+    active: false,
+    _timer: null,
+    _dismiss: null,
+    _targetedUntil: 0,
+    buy() {
+      if (gold < this.cost || this.active) return;
+      gold -= this.cost;
+      goldEl.textContent = gold;
+      this.active = true;
+      sendWS({ type: 'peek' });
+      disableStore();
+      this._dismiss = showMsg('[peeking...]');
+      this._timer = setTimeout(() => this.deactivate(), 10000);
+    },
+    deactivate() {
+      this.active = false;
+      this._targetedUntil = 0;
+      clearTimeout(this._timer); this._timer = null;
+      if (this._dismiss) { this._dismiss(); this._dismiss = null; }
+      for (const [id] of opponents) {
+        const canvas = document.getElementById('peek-canvas-' + id);
+        if (canvas) canvas.classList.add('hidden');
+      }
+      enableStore();
+    },
+    onMessage(msg) {
+      if (msg.type === 'peek') {
+        this._targetedUntil = Date.now() + 11000;
+        sendBoardState();
+        const dismiss = showMsg('[' + msg.id + ' is peeking]');
+        setTimeout(dismiss, 10000);
+      } else if (msg.type === 'board_state' && this.active) {
+        renderPeekBoard(msg.id, msg.board);
+      }
+    },
+  },
 
-let scanActive = false;
-let scanTimer = null;
-let sendQueueUntil = 0;
+  shield: {
+    label: 'SHIELD', cost: 2,
+    active: false,
+    _dismiss: null,
+    buy() {
+      if (gold < this.cost || this.active) return;
+      gold -= this.cost;
+      goldEl.textContent = gold;
+      this.active = true;
+      if (this._dismiss) this._dismiss();
+      this._dismiss = showMsg('[shield active]');
+    },
+    deactivate() {
+      this.active = false;
+      if (this._dismiss) { this._dismiss(); this._dismiss = null; }
+    },
+    onMessage(msg) {
+      if (msg.type === 'attack') {
+        if (this.active) {
+          this.deactivate();
+          showMsg('[attack blocked by shield!]');
+        } else if (inGame && !gameOver) {
+          applyAttack();
+        }
+      }
+    },
+  },
+
+  qscan: {
+    label: 'Q-SCAN', cost: 2,
+    active: false,
+    _timer: null,
+    _targetedUntil: 0,
+    buy() {
+      if (gold < this.cost || this.active) return;
+      gold -= this.cost;
+      goldEl.textContent = gold;
+      this.active = true;
+      sendWS({ type: 'queue_scan' });
+      disableStore();
+      showMsg('[queue scanner active for 15s]');
+      this._timer = setTimeout(() => this.deactivate(), 15000);
+    },
+    deactivate() {
+      this.active = false;
+      this._targetedUntil = 0;
+      clearTimeout(this._timer); this._timer = null;
+      for (const [id] of opponents) {
+        const canvas = document.getElementById('qscan-canvas-' + id);
+        const goldDiv = document.getElementById('qscan-gold-' + id);
+        if (canvas) canvas.classList.add('hidden');
+        if (goldDiv) goldDiv.classList.add('hidden');
+      }
+      enableStore();
+    },
+    onMessage(msg) {
+      if (msg.type === 'queue_scan' && inGame && !gameOver) {
+        this._targetedUntil = Date.now() + 16000;
+        sendQueueData();
+      } else if (msg.type === 'queue_data' && this.active) {
+        renderQueueScan(msg.id, msg.pieces || [], msg.gold);
+      }
+    },
+  },
+};
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -160,11 +257,11 @@ function lock() {
   }
 
   if (scoreChanged) sendScore();
-  if (Date.now() < sendBoardUntil) sendBoardState();
+  if (Date.now() < STORE_ITEMS.peek._targetedUntil) sendBoardState();
 
   piece = drawFromQueue();
   nextPiece = pieceQueue[0];
-  if (Date.now() < sendQueueUntil) sendQueueData();
+  if (Date.now() < STORE_ITEMS.qscan._targetedUntil) sendQueueData();
 
   if (collides(piece)) endGame();
 }
@@ -342,22 +439,10 @@ function endGame() {
 function backToPregame() {
   cancelAnimationFrame(dropTimer);
   clearAllDAS();
-  clearTimeout(peekTimer);
-  peekActive = false;
-  sendBoardUntil = 0;
-  shieldActive = false;
-  if (dismissShieldMsg) { dismissShieldMsg(); dismissShieldMsg = null; }
-  scanActive = false;
-  sendQueueUntil = 0;
-  clearTimeout(scanTimer);
+  for (const item of Object.values(STORE_ITEMS)) item.deactivate();
   inGame = false;
   gameOver = false;
   hideOverlay();
-  for (const [id] of opponents) {
-    const canvas = document.getElementById('peek-canvas-' + id);
-    if (canvas) canvas.classList.add('hidden');
-  }
-  document.querySelectorAll('.store-btn').forEach(b => { b.disabled = false; });
   document.getElementById('game').classList.add('hidden');
   document.getElementById('pregame').classList.remove('hidden');
   updateBeginState();
@@ -368,14 +453,8 @@ function startGame() {
   score = 0; level = 1; lines = 0; gold = 0;
   paused = false; gameOver = false;
   elapsed = 0; goldElapsed = 0;
-  peekActive = false; sendBoardUntil = 0;
-  shieldActive = false;
-  if (dismissShieldMsg) { dismissShieldMsg(); dismissShieldMsg = null; }
-  scanActive = false;
-  sendQueueUntil = 0;
-  clearTimeout(scanTimer);
   clearAllDAS();
-  clearTimeout(peekTimer);
+  for (const item of Object.values(STORE_ITEMS)) item.deactivate();
   scoreEl.textContent = 0;
   levelEl.textContent = 1;
   linesEl.textContent = 0;
@@ -531,16 +610,6 @@ function handleWS(msg) {
     case 'game_over':
       markOpponentOut(msg.id);
       break;
-    case 'peek': {
-      sendBoardUntil = Date.now() + 11000;
-      sendBoardState();
-      const dismiss = showMsg('[' + msg.id + ' is peeking]');
-      setTimeout(dismiss, 10000);
-      break;
-    }
-    case 'board_state':
-      if (peekActive) renderPeekBoard(msg.id, msg.board);
-      break;
     case 'play_again':
       if (msg.id === myId) {
         isCreator = msg.new_creator === myId;
@@ -561,25 +630,8 @@ function handleWS(msg) {
         showOverlay('YOU WIN', '', true);
       }
       break;
-    case 'queue_scan':
-      if (inGame && !gameOver) {
-        sendQueueUntil = Date.now() + 16000;
-        sendQueueData();
-      }
-      break;
-    case 'queue_data':
-      if (scanActive) renderQueueScan(msg.id, msg.pieces || [], msg.gold);
-      break;
-    case 'attack':
-      if (shieldActive) {
-        shieldActive = false;
-        if (dismissShieldMsg) { dismissShieldMsg(); dismissShieldMsg = null; }
-        showMsg('[attack blocked by shield!]');
-      } else if (inGame && !gameOver) {
-        applyAttack();
-      }
-      break;
   }
+  for (const item of Object.values(STORE_ITEMS)) item.onMessage(msg);
 }
 
 function addOpponent(id) {
@@ -653,14 +705,16 @@ function showMsg(text) {
   };
 }
 
-let dismissPeekMsg = null;
-
 function sendBoardState() {
   const flat = [];
   for (let r = 0; r < ROWS; r++)
     for (let c = 0; c < COLS; c++)
       flat.push(board[r][c]);
   sendWS({ type: 'board_state', board: flat });
+}
+
+function sendQueueData() {
+  sendWS({ type: 'queue_data', pieces: pieceQueue.slice(0, 3).map(p => p.id), gold });
 }
 
 function renderPeekBoard(id, flat) {
@@ -678,20 +732,6 @@ function renderPeekBoard(id, flat) {
       ctx.fillRect(c * cs, r * cs, cs - 1, cs - 1);
     }
   }
-}
-
-function endPeek() {
-  peekActive = false;
-  if (dismissPeekMsg) { dismissPeekMsg(); dismissPeekMsg = null; }
-  for (const [id] of opponents) {
-    const canvas = document.getElementById('peek-canvas-' + id);
-    if (canvas) canvas.classList.add('hidden');
-  }
-  document.querySelectorAll('.store-btn').forEach(b => { b.disabled = false; });
-}
-
-function sendQueueData() {
-  sendWS({ type: 'queue_data', pieces: pieceQueue.slice(0, 3).map(p => p.id), gold });
 }
 
 function renderQueueScan(id, pieces, oppGold) {
@@ -719,17 +759,6 @@ function renderQueueScan(id, pieces, oppGold) {
   });
 }
 
-function endQueueScan() {
-  scanActive = false;
-  for (const [id] of opponents) {
-    const canvas = document.getElementById('qscan-canvas-' + id);
-    const goldDiv = document.getElementById('qscan-gold-' + id);
-    if (canvas) canvas.classList.add('hidden');
-    if (goldDiv) goldDiv.classList.add('hidden');
-  }
-  document.querySelectorAll('.store-btn').forEach(b => { b.disabled = false; });
-}
-
 function applyAttack() {
   board.splice(0, 1);
   const gap = Math.floor(Math.random() * COLS);
@@ -739,48 +768,15 @@ function applyAttack() {
   showMsg('[attack received!]');
 }
 
-const ITEM_HANDLERS = {
-  peek: () => {
-    if (gold < 1 || peekActive) return;
-    gold -= 1;
-    goldEl.textContent = gold;
-    peekActive = true;
-    sendWS({ type: 'peek' });
-    document.querySelectorAll('.store-btn').forEach(b => { b.disabled = true; });
-    dismissPeekMsg = showMsg('[peeking...]');
-    clearTimeout(peekTimer);
-    peekTimer = setTimeout(endPeek, 10000);
-  },
-  shield: () => {
-    if (gold < 2 || shieldActive) return;
-    gold -= 2;
-    goldEl.textContent = gold;
-    shieldActive = true;
-    if (dismissShieldMsg) dismissShieldMsg();
-    dismissShieldMsg = showMsg('[shield active]');
-  },
-  qscan: () => {
-    if (gold < 2 || scanActive) return;
-    gold -= 2;
-    goldEl.textContent = gold;
-    scanActive = true;
-    sendWS({ type: 'queue_scan' });
-    document.querySelectorAll('.store-btn').forEach(b => { b.disabled = true; });
-    showMsg('[queue scanner active for 15s]');
-    clearTimeout(scanTimer);
-    scanTimer = setTimeout(endQueueScan, 15000);
-  },
-};
-
 function buildStore() {
   const container = document.getElementById('store');
   container.innerHTML = '';
-  for (const item of STORE_ITEMS) {
+  for (const [id, item] of Object.entries(STORE_ITEMS)) {
     const btn = document.createElement('button');
     btn.className = 'store-btn';
-    btn.id = 'store-' + item.id;
+    btn.id = 'store-' + id;
     btn.textContent = item.label + ' ' + item.cost + 'g';
-    btn.addEventListener('click', () => ITEM_HANDLERS[item.id] && ITEM_HANDLERS[item.id]());
+    btn.addEventListener('click', () => item.buy());
     container.appendChild(btn);
   }
 }
