@@ -24,6 +24,7 @@ type Msg struct {
 	NewCreator string   `json:"new_creator,omitempty"`
 	Pieces     []int    `json:"pieces,omitempty"`
 	Col        int      `json:"col,omitempty"`
+	Target     string   `json:"target,omitempty"`
 }
 
 type Player struct {
@@ -202,7 +203,18 @@ func (p *Player) handle(data []byte) {
 	default:
 		msg.ID = p.id
 		relayed, _ := json.Marshal(msg)
-		p.room.broadcast(relayed, p.id)
+		if msg.Target != "" {
+			p.room.mu.Lock()
+			if tp, ok := p.room.players[msg.Target]; ok {
+				select {
+				case tp.send <- relayed:
+				default:
+				}
+			}
+			p.room.mu.Unlock()
+		} else {
+			p.room.broadcast(relayed, p.id)
+		}
 	}
 }
 

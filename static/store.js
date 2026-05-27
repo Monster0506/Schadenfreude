@@ -31,6 +31,12 @@ const itemBase = {
   },
 };
 
+function pickTarget() {
+  const ids = [...opponents.keys()].filter(id => !opponents.get(id).gameOver);
+  if (ids.length === 0) return null;
+  return ids[Math.floor(Math.random() * ids.length)];
+}
+
 function makeItem(def) {
   return Object.assign(Object.create(itemBase), def);
 }
@@ -42,14 +48,17 @@ const STORE_ITEMS = {
     active: false,
     _targetedUntil: 0,
     _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
       this.active = true;
-      sendWS({ type: 'peek' });
+      sendWS({ type: 'peek', target });
       this._clearMsg();
-      this._showMsg('[peeking...]');
+      this._showMsg('[peeking -> ' + target + ']');
       this._timer = setTimeout(() => this.deactivate(), 10000);
       this._updateBtn();
     },
     buy() {
+      if (!pickTarget()) return;
       if (!this._tryBuy()) return;
       if (this.active) {
         this._queue++;
@@ -127,14 +136,17 @@ const STORE_ITEMS = {
     msgType: 'slide_denied',
     active: false,
     _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
       this.active = true;
-      sendWS({ type: 'slide_denied' });
+      sendWS({ type: 'slide_denied', target });
       this._clearMsg();
-      this._showMsg('[slide denied sent]');
+      this._showMsg('[slide denied -> ' + target + ']');
       this._timer = setTimeout(() => this.deactivate(), 8000);
       this._updateBtn();
     },
     buy() {
+      if (!pickTarget()) return;
       if (!this._tryBuy()) return;
       if (this.active) {
         this._queue++;
@@ -175,14 +187,17 @@ const STORE_ITEMS = {
     msgType: 'zero_friction',
     active: false,
     _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
       this.active = true;
-      sendWS({ type: 'zero_friction' });
+      sendWS({ type: 'zero_friction', target });
       this._clearMsg();
-      this._showMsg('[zero friction sent]');
+      this._showMsg('[zero friction -> ' + target + ']');
       this._timer = setTimeout(() => this.deactivate(), 10000);
       this._updateBtn();
     },
     buy() {
+      if (!pickTarget()) return;
       if (!this._tryBuy()) return;
       if (this.active) {
         this._queue++;
@@ -219,15 +234,18 @@ const STORE_ITEMS = {
     msgType: 'mag_column',
     active: false,
     _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
       const col = Math.floor(Math.random() * COLS);
       this.active = true;
-      sendWS({ type: 'mag_column', col });
+      sendWS({ type: 'mag_column', col, target });
       this._clearMsg();
-      this._showMsg('[magnet: col ' + (col + 1) + ' sent]');
+      this._showMsg('[magnet col ' + (col + 1) + ' -> ' + target + ']');
       this._timer = setTimeout(() => this.deactivate(), 10000);
       this._updateBtn();
     },
     buy() {
+      if (!pickTarget()) return;
       if (!this._tryBuy()) return;
       if (this.active) {
         this._queue++;
@@ -270,14 +288,17 @@ const STORE_ITEMS = {
     active: false,
     _targetedUntil: 0,
     _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
       this.active = true;
-      sendWS({ type: 'queue_scan' });
+      sendWS({ type: 'queue_scan', target });
       this._clearMsg();
-      this._showMsg('[queue scanner active for 15s]');
+      this._showMsg('[q-scan -> ' + target + ']');
       this._timer = setTimeout(() => this.deactivate(), 15000);
       this._updateBtn();
     },
     buy() {
+      if (!pickTarget()) return;
       if (!this._tryBuy()) return;
       if (this.active) {
         this._queue++;
