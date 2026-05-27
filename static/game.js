@@ -60,12 +60,16 @@ let isCreator = false;
 const opponents = new Map();
 
 const STORE_ITEMS = [
-  { id: 'peek', label: 'PEEK', cost: 1 },
+  { id: 'peek',   label: 'PEEK',   cost: 1 },
+  { id: 'shield', label: 'SHIELD', cost: 2 },
 ];
 
 let peekActive = false;
 let peekTimer = null;
 let sendBoardUntil = 0;
+
+let shieldActive = false;
+let dismissShieldMsg = null;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -335,6 +339,8 @@ function backToPregame() {
   clearTimeout(peekTimer);
   peekActive = false;
   sendBoardUntil = 0;
+  shieldActive = false;
+  if (dismissShieldMsg) { dismissShieldMsg(); dismissShieldMsg = null; }
   inGame = false;
   gameOver = false;
   hideOverlay();
@@ -354,6 +360,8 @@ function startGame() {
   paused = false; gameOver = false;
   elapsed = 0; goldElapsed = 0;
   peekActive = false; sendBoardUntil = 0;
+  shieldActive = false;
+  if (dismissShieldMsg) { dismissShieldMsg(); dismissShieldMsg = null; }
   clearAllDAS();
   clearTimeout(peekTimer);
   scoreEl.textContent = 0;
@@ -541,6 +549,15 @@ function handleWS(msg) {
         showOverlay('YOU WIN', '', true);
       }
       break;
+    case 'attack':
+      if (shieldActive) {
+        shieldActive = false;
+        if (dismissShieldMsg) { dismissShieldMsg(); dismissShieldMsg = null; }
+        showMsg('[attack blocked by shield!]');
+      } else if (inGame && !gameOver) {
+        applyAttack();
+      }
+      break;
   }
 }
 
@@ -650,6 +667,15 @@ function endPeek() {
   document.querySelectorAll('.store-btn').forEach(b => { b.disabled = false; });
 }
 
+function applyAttack() {
+  board.splice(0, 1);
+  const gap = Math.floor(Math.random() * COLS);
+  const row = new Array(COLS).fill(1);
+  row[gap] = 0;
+  board.push(row);
+  showMsg('[attack received!]');
+}
+
 const ITEM_HANDLERS = {
   peek: () => {
     if (gold < 1 || peekActive) return;
@@ -661,6 +687,14 @@ const ITEM_HANDLERS = {
     dismissPeekMsg = showMsg('[peeking...]');
     clearTimeout(peekTimer);
     peekTimer = setTimeout(endPeek, 10000);
+  },
+  shield: () => {
+    if (gold < 2 || shieldActive) return;
+    gold -= 2;
+    goldEl.textContent = gold;
+    shieldActive = true;
+    if (dismissShieldMsg) dismissShieldMsg();
+    dismissShieldMsg = showMsg('[shield active]');
   },
 };
 
