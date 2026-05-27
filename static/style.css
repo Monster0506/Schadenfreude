@@ -32,8 +32,12 @@ body {
   color: #888;
 }
 
-#score, #level, #lines {
+#score, #level, #lines, #gold {
   font-size: 20px;
+}
+
+#gold {
+  color: hsl(45, 90%, 60%);
 }
 
 #next { display: block; }

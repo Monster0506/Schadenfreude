@@ -1,6 +1,7 @@
 const COLS = 10;
 const ROWS = 20;
 const CELL = 30;
+const GOLD_INTERVAL = 12000;
 
 const COLORS = [
   null,
@@ -11,6 +12,7 @@ const COLORS = [
   '#c47a7a',
   '#7a96c4',
   '#c4a07a',
+  'gold',
 ];
 
 const PIECES = [
@@ -35,11 +37,14 @@ const nextCtx = nextCanvas.getContext('2d');
 const scoreEl = document.getElementById('score');
 const levelEl = document.getElementById('level');
 const linesEl = document.getElementById('lines');
+const goldEl  = document.getElementById('gold');
 const overlay = document.getElementById('overlay');
 const overlayText = document.getElementById('overlay-text');
 const overlaySub = document.getElementById('overlay-sub');
 
-let board, piece, nextPiece, score, level, lines, paused, gameOver, dropTimer, lastTime;
+let board, piece, nextPiece, score, level, lines, gold, paused, gameOver, dropTimer, lastTime;
+let elapsed = 0;
+let goldElapsed = 0;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -83,8 +88,10 @@ function lock() {
           board[piece.y + r][piece.x + c] = piece.matrix[r][c];
 
   let cleared = 0;
+  let goldCleared = 0;
   for (let r = ROWS - 1; r >= 0; r--) {
     if (board[r].every(v => v)) {
+      goldCleared += board[r].filter(v => v === 8).length;
       board.splice(r, 1);
       board.unshift(new Array(COLS).fill(0));
       cleared++;
@@ -101,12 +108,75 @@ function lock() {
     linesEl.textContent = lines;
   }
 
+  if (goldCleared) {
+    gold += goldCleared;
+    goldEl.textContent = gold;
+  }
+
   piece = nextPiece;
   nextPiece = randomPiece();
 
   if (collides(piece)) {
     endGame();
   }
+}
+
+function spawnGold() {
+  const candidates = [];
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      if (board[r][c] && board[r][c] !== 8)
+        candidates.push([r, c]);
+  if (candidates.length === 0) return;
+  const [r, c] = candidates[Math.floor(Math.random() * candidates.length)];
+  board[r][c] = 8;
+  playChime();
+}
+
+function playChime() {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const masterGain = ctx.createGain();
+  masterGain.gain.setValueAtTime(0.5, ctx.currentTime);
+  masterGain.connect(ctx.destination);
+
+  const delay = ctx.createDelay();
+  const feedback = ctx.createGain();
+  delay.delayTime.setValueAtTime(0.12, ctx.currentTime);
+  feedback.gain.setValueAtTime(0.25, ctx.currentTime);
+  delay.connect(feedback);
+  feedback.connect(delay);
+  delay.connect(masterGain);
+
+  const melody = [523.25, 783.99, 1174.66];
+  const gap = 0.08;
+
+  melody.forEach((root, noteIndex) => {
+    const startTime = ctx.currentTime + (noteIndex * gap);
+    const noteGain = ctx.createGain();
+
+    noteGain.gain.setValueAtTime(0, startTime);
+    noteGain.gain.linearRampToValueAtTime(0.45, startTime + 0.005);
+    noteGain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.45);
+
+    noteGain.connect(masterGain);
+    noteGain.connect(delay);
+
+    [
+      { ratio: 1.0,  type: 'sine', volume: 0.6  },
+      { ratio: 2.0,  type: 'sine', volume: 0.15 },
+      { ratio: 3.02, type: 'sine', volume: 0.08 },
+    ].forEach(ot => {
+      const osc = ctx.createOscillator();
+      osc.type = ot.type;
+      osc.frequency.setValueAtTime(root * ot.ratio, startTime);
+      const otGain = ctx.createGain();
+      otGain.gain.setValueAtTime(ot.volume, startTime);
+      osc.connect(otGain);
+      otGain.connect(noteGain);
+      osc.start(startTime);
+      osc.stop(startTime + 0.5);
+    });
+  });
 }
 
 function moveDown() {
@@ -136,8 +206,15 @@ function tryRotate() {
 
 function drawCell(ctx, x, y, colorId, cellSize = CELL) {
   if (!colorId) return;
-  const color = COLORS[colorId];
-  ctx.fillStyle = color;
+  if (colorId === 8) {
+    const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 250);
+    ctx.fillStyle = `hsl(45, 90%, ${45 + pulse * 20}%)`;
+    ctx.fillRect(x * cellSize + 1, y * cellSize + 1, cellSize - 2, cellSize - 2);
+    ctx.fillStyle = `rgba(255,255,255,${0.2 + pulse * 0.35})`;
+    ctx.fillRect(x * cellSize + 1, y * cellSize + 1, cellSize - 2, 4);
+    return;
+  }
+  ctx.fillStyle = COLORS[colorId];
   ctx.fillRect(x * cellSize + 1, y * cellSize + 1, cellSize - 2, cellSize - 2);
   ctx.fillStyle = 'rgba(255,255,255,0.15)';
   ctx.fillRect(x * cellSize + 1, y * cellSize + 1, cellSize - 2, 4);
@@ -211,10 +288,12 @@ function endGame() {
 
 function startGame() {
   board = createBoard();
-  score = 0; level = 1; lines = 0; paused = false; gameOver = false;
+  score = 0; level = 1; lines = 0; gold = 0; paused = false; gameOver = false;
+  elapsed = 0; goldElapsed = 0;
   scoreEl.textContent = 0;
   levelEl.textContent = 1;
   linesEl.textContent = 0;
+  goldEl.textContent = 0;
   piece = randomPiece();
   nextPiece = randomPiece();
   hideOverlay();
@@ -222,17 +301,23 @@ function startGame() {
   dropTimer = requestAnimationFrame(loop);
 }
 
-let elapsed = 0;
-
 function loop(ts) {
   if (paused || gameOver) return;
   const dt = ts - lastTime;
   lastTime = ts;
+
   elapsed += dt;
   if (elapsed >= LEVEL_SPEED(level)) {
     moveDown();
     elapsed = 0;
   }
+
+  goldElapsed += dt;
+  if (goldElapsed >= GOLD_INTERVAL) {
+    spawnGold();
+    goldElapsed = 0;
+  }
+
   drawBoard();
   drawNext();
   dropTimer = requestAnimationFrame(loop);
