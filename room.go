@@ -20,6 +20,7 @@ type Msg struct {
 	Gold    int      `json:"gold,omitempty"`
 	Players []string `json:"players,omitempty"`
 	Creator bool     `json:"creator,omitempty"`
+	Board   []int    `json:"board,omitempty"`
 }
 
 type Player struct {
