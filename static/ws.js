@@ -69,7 +69,7 @@ function handleWS(msg) {
       }
       break;
   }
-  if (inGame && !gameOver && STORE_ITEMS.shield.active) {
+  if (inGame && !gameOver && STORE_ITEMS.shield.active && msg.id !== myId) {
     const hostile = Object.values(STORE_ITEMS).some(i => i.msgType === msg.type);
     if (hostile) {
       STORE_ITEMS.shield.deactivate();
