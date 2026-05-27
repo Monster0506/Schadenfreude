@@ -1,16 +1,9 @@
-function disableStore() {
-  document.querySelectorAll('.store-btn').forEach(b => { b.disabled = true; });
-}
-
-function enableStore() {
-  document.querySelectorAll('.store-btn').forEach(b => { b.disabled = false; });
-}
-
 const itemBase = {
   _timer: null,
   _dismiss: null,
   _rxTimer: null,
   _rxDismiss: null,
+  _queue: 0,
   _clearTimer() { clearTimeout(this._timer); this._timer = null; },
   _clearMsg()   { if (this._dismiss) { this._dismiss(); this._dismiss = null; } },
   _showMsg(text) { this._dismiss = showMsg(text); },
@@ -20,10 +13,21 @@ const itemBase = {
   },
   _tryBuy() {
     const cost = DEBUG ? 0 : this.cost;
-    if (gold < cost || this.active) return false;
+    if (gold < cost) return false;
     gold -= cost;
     goldEl.textContent = gold;
     return true;
+  },
+  _updateBtn() {
+    const btn = document.getElementById('store-' + this._key);
+    if (!btn) return;
+    const label = btn.querySelector('.store-label');
+    if (!label) return;
+    label.textContent = this._queue > 0 ? this.label + ' [+' + this._queue + ']' : this.label;
+  },
+  reset() {
+    this._queue = 0;
+    this.deactivate();
   },
 };
 
@@ -36,13 +40,23 @@ const STORE_ITEMS = {
     label: 'PEEK', cost: 1, cat: 'intel',
     active: false,
     _targetedUntil: 0,
-    buy() {
-      if (!this._tryBuy()) return;
+    _activate() {
       this.active = true;
       sendWS({ type: 'peek' });
-      disableStore();
+      this._clearMsg();
       this._showMsg('[peeking...]');
       this._timer = setTimeout(() => this.deactivate(), 10000);
+      this._updateBtn();
+    },
+    buy() {
+      if (!this._tryBuy()) return;
+      if (this.active) {
+        this._queue++;
+        this._updateBtn();
+        showMsg('[peek queued x' + this._queue + ']');
+        return;
+      }
+      this._activate();
     },
     deactivate() {
       this.active = false;
@@ -53,7 +67,8 @@ const STORE_ITEMS = {
         const canvas = document.getElementById('peek-canvas-' + id);
         if (canvas) canvas.classList.add('hidden');
       }
-      enableStore();
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
     },
     onMessage(msg) {
       if (msg.type === 'peek') {
@@ -70,15 +85,29 @@ const STORE_ITEMS = {
   shield: makeItem({
     label: 'SHIELD', cost: 2, cat: 'defense',
     active: false,
-    buy() {
-      if (!this._tryBuy()) return;
+    _activate() {
       this.active = true;
       this._clearMsg();
-      this._showMsg('[shield active]');
+      const q = this._queue > 0 ? ' (+' + this._queue + ')' : '';
+      this._showMsg('[shield active' + q + ']');
+      this._updateBtn();
+    },
+    buy() {
+      if (!this._tryBuy()) return;
+      if (this.active) {
+        this._queue++;
+        this._clearMsg();
+        this._showMsg('[shield active (+' + this._queue + ')]');
+        this._updateBtn();
+        return;
+      }
+      this._activate();
     },
     deactivate() {
       this.active = false;
       this._clearMsg();
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
     },
     onMessage(msg) {
       if (msg.type === 'attack') {
@@ -96,13 +125,23 @@ const STORE_ITEMS = {
     label: 'SLIDE DENIED', cost: 4, cat: 'offense',
     msgType: 'slide_denied',
     active: false,
-    buy() {
-      if (!this._tryBuy()) return;
+    _activate() {
       this.active = true;
       sendWS({ type: 'slide_denied' });
-      disableStore();
+      this._clearMsg();
       this._showMsg('[slide denied sent]');
       this._timer = setTimeout(() => this.deactivate(), 8000);
+      this._updateBtn();
+    },
+    buy() {
+      if (!this._tryBuy()) return;
+      if (this.active) {
+        this._queue++;
+        this._updateBtn();
+        showMsg('[slide denied queued x' + this._queue + ']');
+        return;
+      }
+      this._activate();
     },
     deactivate() {
       this.active = false;
@@ -111,7 +150,8 @@ const STORE_ITEMS = {
       this._rxClear();
       dasEnabled = true;
       wallKicksEnabled = true;
-      enableStore();
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
     },
     onMessage(msg) {
       if (msg.type === 'slide_denied' && inGame && !gameOver) {
@@ -133,13 +173,23 @@ const STORE_ITEMS = {
     label: 'ZERO FRICTION', cost: 5, cat: 'offense',
     msgType: 'zero_friction',
     active: false,
-    buy() {
-      if (!this._tryBuy()) return;
+    _activate() {
       this.active = true;
       sendWS({ type: 'zero_friction' });
-      disableStore();
+      this._clearMsg();
       this._showMsg('[zero friction sent]');
       this._timer = setTimeout(() => this.deactivate(), 10000);
+      this._updateBtn();
+    },
+    buy() {
+      if (!this._tryBuy()) return;
+      if (this.active) {
+        this._queue++;
+        this._updateBtn();
+        showMsg('[zero friction queued x' + this._queue + ']');
+        return;
+      }
+      this._activate();
     },
     deactivate() {
       this.active = false;
@@ -147,7 +197,8 @@ const STORE_ITEMS = {
       this._clearMsg();
       this._rxClear();
       zeroFriction = false;
-      enableStore();
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
     },
     onMessage(msg) {
       if (msg.type === 'zero_friction' && inGame && !gameOver) {
@@ -166,14 +217,24 @@ const STORE_ITEMS = {
     label: 'MAG COL', cost: 5, cat: 'offense',
     msgType: 'mag_column',
     active: false,
-    buy() {
-      if (!this._tryBuy()) return;
+    _activate() {
       const col = Math.floor(Math.random() * COLS);
       this.active = true;
       sendWS({ type: 'mag_column', col });
-      disableStore();
+      this._clearMsg();
       this._showMsg('[magnet: col ' + (col + 1) + ' sent]');
       this._timer = setTimeout(() => this.deactivate(), 10000);
+      this._updateBtn();
+    },
+    buy() {
+      if (!this._tryBuy()) return;
+      if (this.active) {
+        this._queue++;
+        this._updateBtn();
+        showMsg('[mag col queued x' + this._queue + ']');
+        return;
+      }
+      this._activate();
     },
     deactivate() {
       this.active = false;
@@ -183,7 +244,8 @@ const STORE_ITEMS = {
       magColActive = false;
       magColIndex = -1;
       magCaught = false;
-      enableStore();
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
     },
     onMessage(msg) {
       if (msg.type === 'mag_column' && inGame && !gameOver) {
@@ -205,13 +267,23 @@ const STORE_ITEMS = {
     label: 'Q-SCAN', cost: 2, cat: 'intel',
     active: false,
     _targetedUntil: 0,
-    buy() {
-      if (!this._tryBuy()) return;
+    _activate() {
       this.active = true;
       sendWS({ type: 'queue_scan' });
-      disableStore();
+      this._clearMsg();
       this._showMsg('[queue scanner active for 15s]');
       this._timer = setTimeout(() => this.deactivate(), 15000);
+      this._updateBtn();
+    },
+    buy() {
+      if (!this._tryBuy()) return;
+      if (this.active) {
+        this._queue++;
+        this._updateBtn();
+        showMsg('[q-scan queued x' + this._queue + ']');
+        return;
+      }
+      this._activate();
     },
     deactivate() {
       this.active = false;
@@ -224,7 +296,8 @@ const STORE_ITEMS = {
         if (canvas) canvas.classList.add('hidden');
         if (goldDiv) { goldDiv.classList.add('hidden'); goldDiv.textContent = ''; }
       }
-      enableStore();
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
     },
     onMessage(msg) {
       if (msg.type === 'queue_scan' && inGame && !gameOver) {
@@ -254,6 +327,7 @@ function buildStore() {
 
   const grouped = {};
   for (const [id, item] of Object.entries(STORE_ITEMS)) {
+    item._key = id;
     const cat = item.cat || 'misc';
     if (!grouped[cat]) grouped[cat] = [];
     grouped[cat].push([id, item]);

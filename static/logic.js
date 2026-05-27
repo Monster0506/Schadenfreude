@@ -150,7 +150,7 @@ function endGame() {
 function backToPregame() {
   cancelAnimationFrame(dropTimer);
   clearAllDAS();
-  for (const item of Object.values(STORE_ITEMS)) item.deactivate();
+  for (const item of Object.values(STORE_ITEMS)) item.reset();
   inGame = false;
   gameOver = false;
   hideOverlay();
@@ -165,7 +165,7 @@ function startGame() {
   paused = false; gameOver = false;
   elapsed = 0; goldElapsed = 0;
   clearAllDAS();
-  for (const item of Object.values(STORE_ITEMS)) item.deactivate();
+  for (const item of Object.values(STORE_ITEMS)) item.reset();
   scoreEl.textContent = 0;
   levelEl.textContent = 1;
   linesEl.textContent = 0;
