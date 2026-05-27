@@ -1,17 +1,12 @@
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
 body {
-  background: #1a1a2e;
+  background: #111;
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100vh;
-  font-family: 'Courier New', monospace;
+  margin: 0;
   color: #eee;
+  font-family: monospace;
 }
 
 #container {
@@ -21,74 +16,41 @@ body {
 }
 
 #board {
-  border: 2px solid #444;
-  background: #0d0d1a;
+  border: 1px solid #555;
   display: block;
 }
 
 #sidebar {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  width: 120px;
-}
-
-.panel {
-  border: 1px solid #444;
-  padding: 8px;
-  background: #0d0d1a;
+  gap: 6px;
+  width: 80px;
 }
 
 .label {
   font-size: 11px;
   color: #888;
-  margin-bottom: 6px;
-  letter-spacing: 1px;
 }
 
 #score, #level, #lines {
-  font-size: 22px;
-  font-weight: bold;
-  color: #e0e0e0;
+  font-size: 20px;
 }
 
-#next {
-  display: block;
-}
-
-#controls {
-  font-size: 10px;
-  color: #666;
-  line-height: 1.8;
-  border: 1px solid #333;
-  padding: 8px;
-  background: #0d0d1a;
-}
+#next { display: block; }
 
 #overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.75);
+  background: rgba(0,0,0,0.6);
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 16px;
-}
-
-#overlay.hidden {
-  display: none;
-}
-
-#overlay-text {
-  font-size: 36px;
-  font-weight: bold;
+  gap: 12px;
+  font-family: monospace;
   color: #fff;
-  letter-spacing: 4px;
 }
 
-#overlay-sub {
-  font-size: 14px;
-  color: #aaa;
-  letter-spacing: 2px;
-}
+#overlay.hidden { display: none; }
+#overlay-text { font-size: 32px; }
+#overlay-sub { font-size: 14px; color: #aaa; }
