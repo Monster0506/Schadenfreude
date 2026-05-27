@@ -67,12 +67,22 @@ function enableStore() {
   document.querySelectorAll('.store-btn').forEach(b => { b.disabled = false; });
 }
 
+const itemBase = {
+  _timer: null,
+  _dismiss: null,
+  _clearTimer() { clearTimeout(this._timer); this._timer = null; },
+  _clearMsg()   { if (this._dismiss) { this._dismiss(); this._dismiss = null; } },
+  _showMsg(text) { this._dismiss = showMsg(text); },
+};
+
+function makeItem(def) {
+  return Object.assign(Object.create(itemBase), def);
+}
+
 const STORE_ITEMS = {
-  peek: {
+  peek: makeItem({
     label: 'PEEK', cost: 1,
     active: false,
-    _timer: null,
-    _dismiss: null,
     _targetedUntil: 0,
     buy() {
       if (gold < this.cost || this.active) return;
@@ -81,14 +91,14 @@ const STORE_ITEMS = {
       this.active = true;
       sendWS({ type: 'peek' });
       disableStore();
-      this._dismiss = showMsg('[peeking...]');
+      this._showMsg('[peeking...]');
       this._timer = setTimeout(() => this.deactivate(), 10000);
     },
     deactivate() {
       this.active = false;
       this._targetedUntil = 0;
-      clearTimeout(this._timer); this._timer = null;
-      if (this._dismiss) { this._dismiss(); this._dismiss = null; }
+      this._clearTimer();
+      this._clearMsg();
       for (const [id] of opponents) {
         const canvas = document.getElementById('peek-canvas-' + id);
         if (canvas) canvas.classList.add('hidden');
@@ -105,23 +115,22 @@ const STORE_ITEMS = {
         renderPeekBoard(msg.id, msg.board);
       }
     },
-  },
+  }),
 
-  shield: {
+  shield: makeItem({
     label: 'SHIELD', cost: 2,
     active: false,
-    _dismiss: null,
     buy() {
       if (gold < this.cost || this.active) return;
       gold -= this.cost;
       goldEl.textContent = gold;
       this.active = true;
-      if (this._dismiss) this._dismiss();
-      this._dismiss = showMsg('[shield active]');
+      this._clearMsg();
+      this._showMsg('[shield active]');
     },
     deactivate() {
       this.active = false;
-      if (this._dismiss) { this._dismiss(); this._dismiss = null; }
+      this._clearMsg();
     },
     onMessage(msg) {
       if (msg.type === 'attack') {
@@ -133,13 +142,11 @@ const STORE_ITEMS = {
         }
       }
     },
-  },
+  }),
 
-  qscan: {
+  qscan: makeItem({
     label: 'Q-SCAN', cost: 2,
     active: false,
-    _timer: null,
-    _dismiss: null,
     _targetedUntil: 0,
     buy() {
       if (gold < this.cost || this.active) return;
@@ -148,14 +155,14 @@ const STORE_ITEMS = {
       this.active = true;
       sendWS({ type: 'queue_scan' });
       disableStore();
-      this._dismiss = showMsg('[queue scanner active for 15s]');
+      this._showMsg('[queue scanner active for 15s]');
       this._timer = setTimeout(() => this.deactivate(), 15000);
     },
     deactivate() {
       this.active = false;
       this._targetedUntil = 0;
-      clearTimeout(this._timer); this._timer = null;
-      if (this._dismiss) { this._dismiss(); this._dismiss = null; }
+      this._clearTimer();
+      this._clearMsg();
       for (const [id] of opponents) {
         const canvas = document.getElementById('qscan-canvas-' + id);
         const goldDiv = document.getElementById('qscan-gold-' + id);
@@ -172,7 +179,7 @@ const STORE_ITEMS = {
         renderQueueScan(msg.id, msg.pieces || [], msg.gold ?? 0);
       }
     },
-  },
+  }),
 };
 
 function createBoard() {
