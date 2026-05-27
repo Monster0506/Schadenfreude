@@ -563,6 +563,7 @@ const ITEM_HANDLERS = {
 
 function buildStore() {
   const container = document.getElementById('store');
+  container.innerHTML = '';
   for (const item of STORE_ITEMS) {
     const btn = document.createElement('button');
     btn.className = 'store-btn';
