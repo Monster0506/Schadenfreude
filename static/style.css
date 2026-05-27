@@ -127,6 +127,34 @@ button:hover { background: #3a3d4e; }
 .store-btn { width: 100%; font-size: 11px; padding: 5px 4px; }
 .store-btn:disabled { opacity: 0.4; cursor: default; }
 
+#msg-stack {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.ws-msg {
+  background: rgba(13,13,26,0.92);
+  border: 1px solid #3a3d4e;
+  color: #bbb;
+  font-family: monospace;
+  font-size: 11px;
+  padding: 5px 10px;
+  animation: msg-fade 3s forwards;
+}
+
+@keyframes msg-fade {
+  0%   { opacity: 0; transform: translateX(8px); }
+  10%  { opacity: 1; transform: translateX(0);   }
+  70%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 #overlay {
   position: fixed;
   inset: 0;

@@ -429,6 +429,7 @@ function handleWS(msg) {
     case 'peek':
       sendBoardUntil = Date.now() + 11000;
       sendBoardState();
+      showMsg('[' + msg.id + ' is peeking]');
       break;
     case 'board_state':
       if (peekActive) renderPeekBoard(msg.id, msg.board);
@@ -512,6 +513,14 @@ function enterGame() {
   inGame = true;
   buildStore();
   startGame();
+}
+
+function showMsg(text) {
+  const el = document.createElement('div');
+  el.className = 'ws-msg';
+  el.textContent = text;
+  document.getElementById('msg-stack').appendChild(el);
+  setTimeout(() => el.remove(), 3000);
 }
 
 function sendBoardState() {
