@@ -58,6 +58,7 @@ let wallKicksEnabled = true;
 let zeroFriction = false;
 let magColActive = false;
 let magColIndex = -1;
+let magCaught = false;
 
 let ws = null;
 let myId = null;
@@ -249,6 +250,7 @@ const STORE_ITEMS = {
       this._rxClear();
       magColActive = false;
       magColIndex = -1;
+      magCaught = false;
       enableStore();
     },
     onMessage(msg) {
@@ -390,6 +392,7 @@ function lock() {
 
   piece = drawFromQueue();
   nextPiece = pieceQueue[0];
+  magCaught = false;
   if (Date.now() < STORE_ITEMS.qscan._targetedUntil) sendQueueData();
 
   if (collides(piece)) endGame();
@@ -451,11 +454,13 @@ function playChime() {
 }
 
 function applyMagnet() {
-  if (!magColActive) return;
+  if (!magColActive) { magCaught = false; return; }
   const w = piece.matrix[0].length;
-  if (piece.x <= magColIndex && piece.x + w > magColIndex) {
-    piece.x = Math.max(0, Math.min(COLS - w, magColIndex));
+  if (!magCaught) {
+    if (piece.x <= magColIndex && piece.x + w > magColIndex) magCaught = true;
+    else return;
   }
+  piece.x = Math.max(0, Math.min(COLS - w, magColIndex));
 }
 
 function moveDown() {
@@ -478,6 +483,7 @@ function tryRotate() {
     if (!collides(piece, kick, 0, rotated)) {
       piece.matrix = rotated;
       piece.x += kick;
+      applyMagnet();
       return;
     }
   }
@@ -684,7 +690,7 @@ document.addEventListener('keydown', e => {
   }
   switch (e.key) {
     case 'ArrowLeft':
-      if (!paused) {
+      if (!paused && !magCaught) {
         e.preventDefault();
         if (zeroFriction) {
           while (!collides(piece, -1, 0)) piece.x--;
@@ -696,7 +702,7 @@ document.addEventListener('keydown', e => {
       }
       break;
     case 'ArrowRight':
-      if (!paused) {
+      if (!paused && !magCaught) {
         e.preventDefault();
         if (zeroFriction) {
           while (!collides(piece, 1, 0)) piece.x++;
