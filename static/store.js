@@ -33,7 +33,7 @@ function makeItem(def) {
 
 const STORE_ITEMS = {
   peek: makeItem({
-    label: 'PEEK', cost: 1,
+    label: 'PEEK', cost: 1, cat: 'intel',
     active: false,
     _targetedUntil: 0,
     buy() {
@@ -68,7 +68,7 @@ const STORE_ITEMS = {
   }),
 
   shield: makeItem({
-    label: 'SHIELD', cost: 2,
+    label: 'SHIELD', cost: 2, cat: 'defense',
     active: false,
     buy() {
       if (!this._tryBuy()) return;
@@ -93,7 +93,7 @@ const STORE_ITEMS = {
   }),
 
   slide_denied: makeItem({
-    label: 'SLIDE DENIED', cost: 4,
+    label: 'SLIDE DENIED', cost: 4, cat: 'offense',
     msgType: 'slide_denied',
     active: false,
     buy() {
@@ -130,7 +130,7 @@ const STORE_ITEMS = {
   }),
 
   zero_friction: makeItem({
-    label: 'ZERO FRICTION', cost: 5,
+    label: 'ZERO FRICTION', cost: 5, cat: 'offense',
     msgType: 'zero_friction',
     active: false,
     buy() {
@@ -163,7 +163,7 @@ const STORE_ITEMS = {
   }),
 
   mag_column: makeItem({
-    label: 'MAG COL', cost: 5,
+    label: 'MAG COL', cost: 5, cat: 'offense',
     msgType: 'mag_column',
     active: false,
     buy() {
@@ -202,7 +202,7 @@ const STORE_ITEMS = {
   }),
 
   qscan: makeItem({
-    label: 'Q-SCAN', cost: 2,
+    label: 'Q-SCAN', cost: 2, cat: 'intel',
     active: false,
     _targetedUntil: 0,
     buy() {
@@ -246,15 +246,45 @@ function applyAttack() {
   showMsg('[attack received!]');
 }
 
+const STORE_CAT_ORDER = ['intel', 'defense', 'offense'];
+
 function buildStore() {
   const container = document.getElementById('store');
   container.innerHTML = '';
+
+  const grouped = {};
   for (const [id, item] of Object.entries(STORE_ITEMS)) {
-    const btn = document.createElement('button');
-    btn.className = 'store-btn';
-    btn.id = 'store-' + id;
-    btn.textContent = item.label + ' ' + (DEBUG ? '0' : item.cost) + 'g';
-    btn.addEventListener('click', () => item.buy());
-    container.appendChild(btn);
+    const cat = item.cat || 'misc';
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push([id, item]);
+  }
+
+  const catOrder = [
+    ...STORE_CAT_ORDER.filter(c => grouped[c]),
+    ...Object.keys(grouped).filter(c => !STORE_CAT_ORDER.includes(c)),
+  ];
+
+  for (const cat of catOrder) {
+    const header = document.createElement('div');
+    header.className = 'store-cat';
+    header.textContent = cat.toUpperCase();
+    container.appendChild(header);
+
+    for (const [id, item] of grouped[cat]) {
+      const btn = document.createElement('button');
+      btn.className = 'store-btn';
+      btn.id = 'store-' + id;
+      btn.dataset.cat = cat;
+      const label = document.createElement('span');
+      label.className = 'store-label';
+      label.textContent = item.label;
+      const cost = document.createElement('span');
+      cost.className = 'store-cost';
+      cost.textContent = (DEBUG ? 0 : item.cost) + 'g';
+      btn.appendChild(label);
+      btn.appendChild(cost);
+      btn.addEventListener('click', () => item.buy());
+      container.appendChild(btn);
+    }
   }
 }
