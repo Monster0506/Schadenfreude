@@ -1,12 +1,98 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
 body {
+  background: #1c1e26;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #eee;
+  font-family: monospace;
+}
+
+#lobby {
+  position: fixed;
+  inset: 0;
   background: #1c1e26;
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
-  margin: 0;
+  z-index: 10;
+}
+
+#lobby.hidden { display: none; }
+
+#lobby-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+#lobby-title {
+  font-size: 40px;
+  letter-spacing: 8px;
+  margin-bottom: 8px;
+}
+
+#lobby-join {
+  display: flex;
+  gap: 8px;
+}
+
+#room-input {
+  background: #0d0d1a;
+  border: 1px solid #555;
   color: #eee;
   font-family: monospace;
+  font-size: 16px;
+  padding: 6px 10px;
+  width: 140px;
+  outline: none;
+}
+
+button {
+  background: #2a2d3e;
+  border: 1px solid #555;
+  color: #eee;
+  font-family: monospace;
+  font-size: 13px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+button:hover { background: #3a3d4e; }
+
+.lobby-sep { color: #555; font-size: 12px; }
+
+#lobby-status {
+  margin-top: 8px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+#lobby-status.hidden { display: none; }
+
+.lobby-hint { color: #777; font-size: 11px; margin-top: 4px; }
+
+#game {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+#game.hidden { display: none; }
+
+#opponents {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 110px;
+  min-width: 110px;
 }
 
 #container {
@@ -27,20 +113,35 @@ body {
   width: 80px;
 }
 
-.label {
-  font-size: 11px;
-  color: #888;
-}
+.label { font-size: 11px; color: #888; }
 
-#score, #level, #lines, #gold {
-  font-size: 20px;
-}
+#score, #level, #lines, #gold { font-size: 20px; }
 
-#gold {
-  color: hsl(45, 90%, 60%);
-}
+#gold { color: hsl(45, 90%, 60%); }
 
 #next { display: block; }
+
+.opp-card {
+  border: 1px solid #3a3d4e;
+  padding: 8px;
+  background: #0d0d1a;
+  transition: opacity 0.3s;
+}
+
+.opp-id {
+  font-size: 10px;
+  color: #666;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opp-score { font-size: 18px; color: #ddd; }
+
+.opp-sub { font-size: 10px; color: #666; margin-top: 2px; }
+
+.opp-out { opacity: 0.35; }
 
 #overlay {
   position: fixed;

@@ -27,24 +27,33 @@ const PIECES = [
 ];
 
 const POINTS = [0, 100, 300, 500, 800];
-
 const LEVEL_SPEED = (level) => Math.max(50, 1000 - (level - 1) * 90);
 
 const boardCanvas = document.getElementById('board');
-const boardCtx = boardCanvas.getContext('2d');
-const nextCanvas = document.getElementById('next');
-const nextCtx = nextCanvas.getContext('2d');
-const scoreEl = document.getElementById('score');
-const levelEl = document.getElementById('level');
-const linesEl = document.getElementById('lines');
-const goldEl  = document.getElementById('gold');
-const overlay = document.getElementById('overlay');
+const boardCtx    = boardCanvas.getContext('2d');
+const nextCanvas  = document.getElementById('next');
+const nextCtx     = nextCanvas.getContext('2d');
+const scoreEl     = document.getElementById('score');
+const levelEl     = document.getElementById('level');
+const linesEl     = document.getElementById('lines');
+const goldEl      = document.getElementById('gold');
+const overlay     = document.getElementById('overlay');
 const overlayText = document.getElementById('overlay-text');
-const overlaySub = document.getElementById('overlay-sub');
+const overlaySub  = document.getElementById('overlay-sub');
 
 let board, piece, nextPiece, score, level, lines, gold, paused, gameOver, dropTimer, lastTime;
 let elapsed = 0;
 let goldElapsed = 0;
+let inGame = false;
+
+// --- websocket state ---
+let ws = null;
+let myId = null;
+let roomId = null;
+let inRoom = false;
+const opponents = new Map();
+
+// --- game logic ---
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -99,6 +108,8 @@ function lock() {
     }
   }
 
+  let scoreChanged = false;
+
   if (cleared) {
     lines += cleared;
     score += POINTS[cleared] * level;
@@ -106,12 +117,16 @@ function lock() {
     scoreEl.textContent = score;
     levelEl.textContent = level;
     linesEl.textContent = lines;
+    scoreChanged = true;
   }
 
   if (goldCleared) {
     gold += goldCleared;
     goldEl.textContent = gold;
+    scoreChanged = true;
   }
+
+  if (scoreChanged) sendScore();
 
   piece = nextPiece;
   nextPiece = randomPiece();
@@ -283,12 +298,14 @@ function hideOverlay() {
 function endGame() {
   gameOver = true;
   cancelAnimationFrame(dropTimer);
-  showOverlay('GAME OVER', 'Press Enter to restart');
+  sendWS({ type: 'game_over' });
+  showOverlay('GAME OVER', 'press enter to play again');
 }
 
 function startGame() {
   board = createBoard();
-  score = 0; level = 1; lines = 0; gold = 0; paused = false; gameOver = false;
+  score = 0; level = 1; lines = 0; gold = 0;
+  paused = false; gameOver = false;
   elapsed = 0; goldElapsed = 0;
   scoreEl.textContent = 0;
   levelEl.textContent = 1;
@@ -298,6 +315,8 @@ function startGame() {
   nextPiece = randomPiece();
   hideOverlay();
   lastTime = 0;
+  sendWS({ type: 'restart' });
+  sendScore();
   dropTimer = requestAnimationFrame(loop);
 }
 
@@ -324,6 +343,7 @@ function loop(ts) {
 }
 
 document.addEventListener('keydown', e => {
+  if (!inGame) return;
   if (gameOver) {
     if (e.key === 'Enter') startGame();
     return;
@@ -337,7 +357,7 @@ document.addEventListener('keydown', e => {
     case 'p': case 'P':
       paused = !paused;
       if (paused) {
-        showOverlay('PAUSED', 'Press P to continue');
+        showOverlay('PAUSED', 'press P to continue');
       } else {
         hideOverlay();
         lastTime = performance.now();
@@ -347,10 +367,148 @@ document.addEventListener('keydown', e => {
   }
 });
 
-showOverlay('TETRIS', 'Press Enter to start');
-document.addEventListener('keydown', function startOnEnter(e) {
-  if (e.key === 'Enter') {
-    document.removeEventListener('keydown', startOnEnter);
-    startGame();
+// --- websocket ---
+
+function connectWS(room) {
+  ws = new WebSocket(`ws://${location.host}/ws?room=${room}`);
+  ws.onmessage = e => handleWS(JSON.parse(e.data));
+  ws.onerror = () => console.error('ws error');
+  ws.onclose = () => console.log('ws closed');
+}
+
+function sendWS(data) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(data));
   }
+}
+
+function sendScore() {
+  sendWS({ type: 'score', score, level, lines, gold });
+}
+
+function handleWS(msg) {
+  switch (msg.type) {
+    case 'init':
+      myId = msg.id;
+      document.getElementById('room-display').textContent = msg.room;
+      document.getElementById('player-count').textContent = 'players: ' + (msg.players.length + 1);
+      document.getElementById('lobby-status').classList.remove('hidden');
+      for (const id of (msg.players || [])) addOpponent(id);
+      inRoom = true;
+      break;
+    case 'player_joined':
+      addOpponent(msg.id);
+      updatePlayerCount();
+      sendScore();
+      break;
+    case 'player_left':
+      removeOpponent(msg.id);
+      updatePlayerCount();
+      break;
+    case 'score':
+      updateOpponent(msg.id, msg);
+      break;
+    case 'game_over':
+      markOpponentOut(msg.id);
+      break;
+    case 'win':
+      if (!gameOver && inGame) {
+        gameOver = true;
+        cancelAnimationFrame(dropTimer);
+        showOverlay('YOU WIN', 'press enter to play again');
+      }
+      break;
+  }
+}
+
+function addOpponent(id) {
+  if (opponents.has(id)) return;
+  const card = document.createElement('div');
+  card.className = 'opp-card';
+  card.id = 'opp-' + id;
+  card.innerHTML =
+    '<div class="opp-id">' + id + '</div>' +
+    '<div class="opp-score" id="opp-score-' + id + '">0</div>' +
+    '<div class="opp-sub" id="opp-sub-' + id + '">lvl 1</div>';
+  document.getElementById('opponents').appendChild(card);
+  opponents.set(id, { score: 0, level: 1, gameOver: false });
+}
+
+function removeOpponent(id) {
+  const el = document.getElementById('opp-' + id);
+  if (el) el.remove();
+  opponents.delete(id);
+}
+
+function updateOpponent(id, data) {
+  if (!opponents.has(id)) addOpponent(id);
+  const opp = opponents.get(id);
+  Object.assign(opp, data);
+  const se = document.getElementById('opp-score-' + id);
+  const sub = document.getElementById('opp-sub-' + id);
+  if (se)  se.textContent  = opp.score;
+  if (sub) sub.textContent = 'lvl ' + opp.level;
+}
+
+function markOpponentOut(id) {
+  const el = document.getElementById('opp-' + id);
+  if (el) el.classList.add('opp-out');
+  if (opponents.has(id)) opponents.get(id).gameOver = true;
+}
+
+function updatePlayerCount() {
+  const el = document.getElementById('player-count');
+  if (el) el.textContent = 'players: ' + (opponents.size + 1);
+}
+
+// --- lobby ---
+
+function randRoomCode() {
+  const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
+  return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+function joinRoom(code) {
+  code = code.toLowerCase();
+  roomId = code;
+  history.replaceState(null, '', '?room=' + code);
+  connectWS(code);
+}
+
+function enterGame() {
+  document.getElementById('lobby').classList.add('hidden');
+  document.getElementById('game').classList.remove('hidden');
+  inGame = true;
+  startGame();
+}
+
+const roomInput = document.getElementById('room-input');
+const urlRoom = new URLSearchParams(location.search).get('room');
+if (urlRoom) roomInput.value = urlRoom;
+
+document.getElementById('create-btn').addEventListener('click', () => {
+  const code = randRoomCode();
+  roomInput.value = code;
+  joinRoom(code);
+});
+
+document.getElementById('join-btn').addEventListener('click', () => {
+  const code = roomInput.value.trim();
+  if (code) joinRoom(code);
+});
+
+roomInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const code = roomInput.value.trim();
+    if (code) joinRoom(code);
+  }
+});
+
+document.getElementById('copy-btn').addEventListener('click', () => {
+  navigator.clipboard.writeText(location.origin + location.pathname + '?room=' + roomId);
+});
+
+document.addEventListener('keydown', e => {
+  if (inGame) return;
+  if (e.key === 'Enter' && inRoom) enterGame();
 });
