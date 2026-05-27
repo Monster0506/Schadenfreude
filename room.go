@@ -18,9 +18,10 @@ type Msg struct {
 	Level   int      `json:"level,omitempty"`
 	Lines   int      `json:"lines,omitempty"`
 	Gold    int      `json:"gold,omitempty"`
-	Players []string `json:"players,omitempty"`
-	Creator bool     `json:"creator,omitempty"`
-	Board   []int    `json:"board,omitempty"`
+	Players    []string `json:"players,omitempty"`
+	Creator    bool     `json:"creator,omitempty"`
+	Board      []int    `json:"board,omitempty"`
+	NewCreator string   `json:"new_creator,omitempty"`
 }
 
 type Player struct {
@@ -32,10 +33,11 @@ type Player struct {
 }
 
 type Room struct {
-	id      string
-	creator string
-	players map[string]*Player
-	mu      sync.Mutex
+	id               string
+	creator          string
+	playAgainPending string
+	players          map[string]*Player
+	mu               sync.Mutex
 }
 
 type RoomManager struct {
@@ -77,6 +79,17 @@ func (rm *RoomManager) cleanup(id string) {
 	r.mu.Unlock()
 	if empty {
 		delete(rm.rooms, id)
+	}
+}
+
+func (r *Room) broadcastAll(msg []byte) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, p := range r.players {
+		select {
+		case p.send <- msg:
+		default:
+		}
 	}
 }
 
@@ -164,9 +177,20 @@ func (p *Player) handle(data []byte) {
 		p.room.checkWin()
 	case "restart":
 		p.gameOver = false
+	case "play_again":
+		p.room.mu.Lock()
+		if p.room.playAgainPending == "" {
+			p.room.playAgainPending = p.id
+			p.room.creator = p.id
+		}
+		newCreator := p.room.creator
+		p.room.mu.Unlock()
+		out, _ := json.Marshal(Msg{Type: "play_again", ID: p.id, NewCreator: newCreator})
+		p.room.broadcastAll(out)
 	case "start":
 		p.room.mu.Lock()
 		isCreator := p.id == p.room.creator
+		p.room.playAgainPending = ""
 		p.room.mu.Unlock()
 		if !isCreator {
 			return
