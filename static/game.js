@@ -167,7 +167,7 @@ const STORE_ITEMS = {
         this._targetedUntil = Date.now() + 16000;
         sendQueueData();
       } else if (msg.type === 'queue_data' && this.active) {
-        renderQueueScan(msg.id, msg.pieces || [], msg.gold);
+        renderQueueScan(msg.id, msg.pieces || [], msg.gold ?? 0);
       }
     },
   },
