@@ -52,6 +52,14 @@ let roomId = null;
 let isCreator = false;
 const opponents = new Map();
 
+const STORE_ITEMS = [
+  { id: 'peek', label: 'PEEK', cost: 1 },
+];
+
+let peekActive = false;
+let peekTimer = null;
+let sendBoardUntil = 0;
+
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
 }
@@ -124,6 +132,7 @@ function lock() {
   }
 
   if (scoreChanged) sendScore();
+  if (Date.now() < sendBoardUntil) sendBoardState();
 
   piece = nextPiece;
   nextPiece = randomPiece();
@@ -296,6 +305,8 @@ function startGame() {
   score = 0; level = 1; lines = 0; gold = 0;
   paused = false; gameOver = false;
   elapsed = 0; goldElapsed = 0;
+  peekActive = false; sendBoardUntil = 0;
+  clearTimeout(peekTimer);
   scoreEl.textContent = 0;
   levelEl.textContent = 1;
   linesEl.textContent = 0;
@@ -394,6 +405,13 @@ function handleWS(msg) {
     case 'game_over':
       markOpponentOut(msg.id);
       break;
+    case 'peek':
+      sendBoardUntil = Date.now() + 11000;
+      sendBoardState();
+      break;
+    case 'board_state':
+      if (peekActive) renderPeekBoard(msg.id, msg.board);
+      break;
     case 'start':
       if (!inGame) enterGame();
       break;
@@ -415,7 +433,8 @@ function addOpponent(id) {
   card.innerHTML =
     '<div class="opp-id">' + id + '</div>' +
     '<div class="opp-score" id="opp-score-' + id + '">0</div>' +
-    '<div class="opp-sub" id="opp-sub-' + id + '">lvl 1</div>';
+    '<div class="opp-sub" id="opp-sub-' + id + '">lvl 1</div>' +
+    '<canvas id="peek-canvas-' + id + '" class="peek-canvas hidden" width="60" height="120"></canvas>';
   document.getElementById('opponents').appendChild(card);
   opponents.set(id, { score: 0, level: 1, gameOver: false });
 }
@@ -460,7 +479,67 @@ function enterGame() {
   document.getElementById('pregame').classList.add('hidden');
   document.getElementById('game').classList.remove('hidden');
   inGame = true;
+  buildStore();
   startGame();
+}
+
+function sendBoardState() {
+  const flat = [];
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      flat.push(board[r][c]);
+  sendWS({ type: 'board_state', board: flat });
+}
+
+function renderPeekBoard(id, flat) {
+  const canvas = document.getElementById('peek-canvas-' + id);
+  if (!canvas) return;
+  canvas.classList.remove('hidden');
+  const ctx = canvas.getContext('2d');
+  const cs = 6;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const v = flat[r * COLS + c];
+      if (!v) continue;
+      ctx.fillStyle = v === 8 ? 'gold' : COLORS[v];
+      ctx.fillRect(c * cs, r * cs, cs - 1, cs - 1);
+    }
+  }
+}
+
+function endPeek() {
+  peekActive = false;
+  for (const [id] of opponents) {
+    const canvas = document.getElementById('peek-canvas-' + id);
+    if (canvas) canvas.classList.add('hidden');
+  }
+  document.querySelectorAll('.store-btn').forEach(b => { b.disabled = false; });
+}
+
+const ITEM_HANDLERS = {
+  peek: () => {
+    if (gold < 1 || peekActive) return;
+    gold -= 1;
+    goldEl.textContent = gold;
+    peekActive = true;
+    sendWS({ type: 'peek' });
+    document.querySelectorAll('.store-btn').forEach(b => { b.disabled = true; });
+    clearTimeout(peekTimer);
+    peekTimer = setTimeout(endPeek, 10000);
+  },
+};
+
+function buildStore() {
+  const container = document.getElementById('store');
+  for (const item of STORE_ITEMS) {
+    const btn = document.createElement('button');
+    btn.className = 'store-btn';
+    btn.id = 'store-' + item.id;
+    btn.textContent = item.label + ' ' + item.cost + 'g';
+    btn.addEventListener('click', () => ITEM_HANDLERS[item.id] && ITEM_HANDLERS[item.id]());
+    container.appendChild(btn);
+  }
 }
 
 const roomParam = new URLSearchParams(location.search).get('room');

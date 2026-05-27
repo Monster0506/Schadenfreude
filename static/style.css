@@ -120,6 +120,13 @@ button:hover { background: #3a3d4e; }
 .opp-sub { font-size: 10px; color: #666; margin-top: 2px; }
 .opp-out { opacity: 0.35; }
 
+.peek-canvas { display: block; margin-top: 6px; border: 1px solid #3a3d4e; }
+.peek-canvas.hidden { display: none; }
+
+#store { display: flex; flex-direction: column; gap: 4px; }
+.store-btn { width: 100%; font-size: 11px; padding: 5px 4px; }
+.store-btn:disabled { opacity: 0.4; cursor: default; }
+
 #overlay {
   position: fixed;
   inset: 0;
