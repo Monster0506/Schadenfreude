@@ -426,11 +426,13 @@ function handleWS(msg) {
     case 'game_over':
       markOpponentOut(msg.id);
       break;
-    case 'peek':
+    case 'peek': {
       sendBoardUntil = Date.now() + 11000;
       sendBoardState();
-      showMsg('[' + msg.id + ' is peeking]');
+      const dismiss = showMsg('[' + msg.id + ' is peeking]');
+      setTimeout(dismiss, 10000);
       break;
+    }
     case 'board_state':
       if (peekActive) renderPeekBoard(msg.id, msg.board);
       break;
@@ -520,8 +522,13 @@ function showMsg(text) {
   el.className = 'ws-msg';
   el.textContent = text;
   document.getElementById('msg-stack').appendChild(el);
-  setTimeout(() => el.remove(), 3000);
+  return () => {
+    el.classList.add('ws-msg-out');
+    setTimeout(() => el.remove(), 300);
+  };
 }
+
+let dismissPeekMsg = null;
 
 function sendBoardState() {
   const flat = [];
@@ -550,6 +557,7 @@ function renderPeekBoard(id, flat) {
 
 function endPeek() {
   peekActive = false;
+  if (dismissPeekMsg) { dismissPeekMsg(); dismissPeekMsg = null; }
   for (const [id] of opponents) {
     const canvas = document.getElementById('peek-canvas-' + id);
     if (canvas) canvas.classList.add('hidden');
@@ -565,6 +573,7 @@ const ITEM_HANDLERS = {
     peekActive = true;
     sendWS({ type: 'peek' });
     document.querySelectorAll('.store-btn').forEach(b => { b.disabled = true; });
+    dismissPeekMsg = showMsg('[peeking...]');
     clearTimeout(peekTimer);
     peekTimer = setTimeout(endPeek, 10000);
   },
