@@ -38,6 +38,7 @@ function makeItem(def) {
 const STORE_ITEMS = {
   peek: makeItem({
     label: 'PEEK', cost: 1, cat: 'intel',
+    msgType: 'peek',
     active: false,
     _targetedUntil: 0,
     _activate() {
