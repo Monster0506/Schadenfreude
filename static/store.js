@@ -661,6 +661,48 @@ const STORE_ITEMS = {
     },
   }),
 
+  camouflage: makeItem({
+    label: 'CAMOUFLAGE', cost: 4, cat: 'offense',
+    msgType: 'camouflage',
+    tip: 'All blocks rendered the same color for 12 seconds.',
+    active: false,
+    _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
+      this.active = true;
+      sendWS({ type: 'camouflage', target });
+      this._clearMsg();
+      this._showMsg('[camouflage -> ' + target + ']');
+      this._timer = setTimeout(() => this.deactivate(), 12000);
+      this._updateBtn();
+      this._setActive(true);
+    },
+    buy() {
+      if (!pickTarget()) return;
+      if (!this._tryBuy()) return;
+      if (this.active) { this._queue++; this._updateBtn(); showMsg('[camo queued x' + this._queue + ']'); return; }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._rxClear();
+      camouflageActive = false;
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    onMessage(msg) {
+      if (msg.type === 'camouflage' && inGame && !gameOver) {
+        this._rxClear();
+        camouflageActive = true;
+        this._rxDismiss = showMsg('[CAMOUFLAGE - 12s]');
+        this._rxTimer = setTimeout(() => { camouflageActive = false; this._rxClear(); }, 12000);
+      }
+    },
+  }),
+
   strobe_light: makeItem({
     label: 'STROBE LIGHT', cost: 3, cat: 'offense',
     msgType: 'strobe_light',

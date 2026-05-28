@@ -1,5 +1,10 @@
 function drawCell(ctx, x, y, colorId, cellSize = CELL) {
   if (!colorId) return;
+  if (camouflageActive && colorId !== 8 && colorId !== 9) {
+    ctx.fillStyle = '#4a4e66';
+    ctx.fillRect(x * cellSize + 1, y * cellSize + 1, cellSize - 2, cellSize - 2);
+    return;
+  }
   if (colorId === 8) {
     const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 250);
     ctx.fillStyle = `hsl(45, 90%, ${45 + pulse * 20}%)`;
