@@ -1,6 +1,6 @@
 function drawCell(ctx, x, y, colorId, cellSize = CELL) {
   if (!colorId) return;
-  if (camouflageActive && colorId !== 8 && colorId !== 9) {
+  if (camouflageActive) {
     ctx.fillStyle = '#4a4e66';
     ctx.fillRect(x * cellSize + 1, y * cellSize + 1, cellSize - 2, cellSize - 2);
     return;
