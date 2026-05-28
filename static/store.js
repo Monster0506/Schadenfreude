@@ -661,6 +661,51 @@ const STORE_ITEMS = {
     },
   }),
 
+  bouncy_blocks: makeItem({
+    label: 'BOUNCY BLOCKS', cost: 9, cat: 'offense',
+    msgType: 'bouncy_blocks',
+    tip: "Opponent's next 3 piece drops bounce up 2 rows before settling.",
+    active: false,
+    _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
+      this.active = true;
+      sendWS({ type: 'bouncy_blocks', target });
+      this._clearMsg();
+      this._showMsg('[bouncy blocks -> ' + target + ']');
+      this._timer = setTimeout(() => this.deactivate(), 30000);
+      this._updateBtn();
+      this._setActive(true);
+    },
+    buy() {
+      if (!pickTarget()) return;
+      if (!this._tryBuy()) return;
+      if (this.active) { this._queue++; this._updateBtn(); showMsg('[bouncy queued x' + this._queue + ']'); return; }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._rxClear();
+      bouncyBlocksLeft = 0;
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    onMessage(msg) {
+      if (msg.type === 'bouncy_blocks' && inGame && !gameOver) {
+        this._rxClear();
+        bouncyBlocksLeft += 3;
+        this._rxDismiss = showMsg('[BOUNCY BLOCKS x3!]');
+        this._rxTimer = setTimeout(() => {
+          bouncyBlocksLeft = 0;
+          this._rxClear();
+        }, 30000);
+      }
+    },
+  }),
+
   qscan: makeItem({
     label: 'Q-SCAN', cost: 2, cat: 'intel',
     msgType: 'queue_scan',

@@ -146,16 +146,31 @@ function applyMagnet() {
   piece.x = Math.max(0, Math.min(COLS - w, magColIndex));
 }
 
+function applyBounce() {
+  if (bouncyBlocksLeft <= 0) return false;
+  bouncyBlocksLeft--;
+  let moved = 0;
+  while (moved < 2 && piece.y > 0 && !collides(piece, 0, -1)) {
+    piece.y--;
+    moved++;
+  }
+  const left = bouncyBlocksLeft;
+  showMsg('[BOUNCY! ' + (left > 0 ? left + ' left' : 'last one') + ']');
+  return true;
+}
+
 function moveDown() {
   if (!collides(piece, 0, 1)) {
     piece.y++;
   } else {
+    applyBounce();
     lock();
   }
 }
 
 function hardDrop() {
   while (!collides(piece, 0, 1)) piece.y++;
+  applyBounce();
   lock();
 }
 
