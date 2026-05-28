@@ -266,6 +266,13 @@ function loop(ts) {
     goldElapsed = 0;
   }
 
+  if (autoRotateActive && !paused && !gameOver) {
+    autoRotateTimer += dt;
+    if (autoRotateTimer >= 500) {
+      autoRotateTimer -= 500;
+      tryRotate();
+    }
+  }
   applyMagnet();
   if (stuckKeyDir !== 0 && !paused && !gameOver) {
     const dx = stuckKeyDir;

@@ -661,6 +661,50 @@ const STORE_ITEMS = {
     },
   }),
 
+  auto_rotator: makeItem({
+    label: 'AUTO-ROTATOR', cost: 8, cat: 'offense',
+    msgType: 'auto_rotator',
+    tip: "Opponent's piece auto-rotates every 0.5s for 10 seconds.",
+    active: false,
+    _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
+      this.active = true;
+      sendWS({ type: 'auto_rotator', target });
+      this._clearMsg();
+      this._showMsg('[auto-rotator -> ' + target + ']');
+      this._timer = setTimeout(() => this.deactivate(), 10000);
+      this._updateBtn();
+      this._setActive(true);
+    },
+    buy() {
+      if (!pickTarget()) return;
+      if (!this._tryBuy()) return;
+      if (this.active) { this._queue++; this._updateBtn(); showMsg('[auto-rotator queued x' + this._queue + ']'); return; }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._rxClear();
+      autoRotateActive = false;
+      autoRotateTimer = 0;
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    onMessage(msg) {
+      if (msg.type === 'auto_rotator' && inGame && !gameOver) {
+        this._rxClear();
+        autoRotateActive = true;
+        autoRotateTimer = 0;
+        this._rxDismiss = showMsg('[AUTO-ROTATE - 10s]');
+        this._rxTimer = setTimeout(() => { autoRotateActive = false; autoRotateTimer = 0; this._rxClear(); }, 10000);
+      }
+    },
+  }),
+
   t_clog: makeItem({
     label: 'T-CLOG', cost: 7, cat: 'offense',
     msgType: 't_clog',
