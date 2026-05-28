@@ -12,6 +12,7 @@ const itemBase = {
     if (this._rxDismiss) { this._rxDismiss(); this._rxDismiss = null; }
   },
   _tryBuy() {
+    if (storeBribeActive) { showMsg('[store locked!]'); return false; }
     const cost = DEBUG ? 0 : this.cost;
     if (gold < cost) return false;
     gold -= cost;
@@ -657,6 +658,56 @@ const STORE_ITEMS = {
         const dirName = stuckKeyDir === -1 ? 'LEFT' : 'RIGHT';
         this._rxDismiss = showMsg('[STUCK ' + dirName + ' - 8s]');
         this._rxTimer = setTimeout(() => { stuckKeyDir = 0; this._rxClear(); }, 8000);
+      }
+    },
+  }),
+
+  bribe: makeItem({
+    label: 'BRIBE', cost: 4, cat: 'offense',
+    msgType: 'bribe',
+    tip: "Locks opponent out of the store for 10 seconds.",
+    active: false,
+    _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
+      this.active = true;
+      sendWS({ type: 'bribe', target });
+      this._clearMsg();
+      this._showMsg('[bribe -> ' + target + ']');
+      this._timer = setTimeout(() => this.deactivate(), 10000);
+      this._updateBtn();
+      this._setActive(true);
+    },
+    buy() {
+      if (!pickTarget()) return;
+      if (!this._tryBuy()) return;
+      if (this.active) { this._queue++; this._updateBtn(); showMsg('[bribe queued x' + this._queue + ']'); return; }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._rxClear();
+      storeBribeActive = false;
+      const storeEl = document.getElementById('store-panel');
+      if (storeEl) storeEl.style.opacity = '';
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    onMessage(msg) {
+      if (msg.type === 'bribe' && inGame && !gameOver) {
+        this._rxClear();
+        storeBribeActive = true;
+        const storeEl = document.getElementById('store-panel');
+        if (storeEl) storeEl.style.opacity = '0.2';
+        this._rxDismiss = showMsg('[BRIBED - store locked 10s]');
+        this._rxTimer = setTimeout(() => {
+          storeBribeActive = false;
+          if (storeEl) storeEl.style.opacity = '';
+          this._rxClear();
+        }, 10000);
       }
     },
   }),
