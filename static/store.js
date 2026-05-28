@@ -661,6 +661,48 @@ const STORE_ITEMS = {
     },
   }),
 
+  custom_pieces: makeItem({
+    label: 'CUSTOM PIECES', cost: 10, cat: 'offense',
+    msgType: 'custom_pieces',
+    tip: "Replace opponent's next 3 pieces with awkward shapes.",
+    active: false,
+    _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
+      this.active = true;
+      sendWS({ type: 'custom_pieces', target });
+      this._clearMsg();
+      this._showMsg('[custom pieces -> ' + target + ']');
+      this._timer = setTimeout(() => this.deactivate(), 1000);
+      this._updateBtn();
+      this._setActive(true);
+    },
+    buy() {
+      if (!pickTarget()) return;
+      if (!this._tryBuy()) return;
+      if (this.active) { this._queue++; this._updateBtn(); showMsg('[custom pieces queued x' + this._queue + ']'); return; }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    onMessage(msg) {
+      if (msg.type === 'custom_pieces' && inGame && !gameOver) {
+        const awkward = ['awkward_1', 'awkward_2', 'awkward_3'];
+        for (let i = 0; i < 3; i++) {
+          const key = awkward[Math.floor(Math.random() * awkward.length)];
+          nextPieceOverrides.push(CUSTOM_PIECES[key].map(r => [...r]));
+        }
+        showMsg('[CURSED PIECES x3 incoming!]');
+      }
+    },
+  }),
+
   mega_mino: makeItem({
     label: 'MEGA-MINO', cost: 9, cat: 'offense',
     msgType: 'mega_mino',
