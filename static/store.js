@@ -171,6 +171,34 @@ const STORE_ITEMS = {
     onMessage() {},
   }),
 
+  the_drill: makeItem({
+    label: 'THE DRILL', cost: 4, cat: 'defensive',
+    tip: 'Instantly destroys up to 3 solid concrete rows from the bottom of your stack.',
+    active: false,
+    _activate() {
+      let drilled = 0;
+      for (let r = ROWS - 1; r >= 0 && drilled < 3; r--) {
+        if (board[r].some(v => v === 9)) {
+          board.splice(r, 1);
+          board.unshift(new Array(COLS).fill(0));
+          drilled++;
+          r++;
+        }
+      }
+      const msg = drilled > 0 ? '[drilled ' + drilled + ' row' + (drilled > 1 ? 's' : '') + ']' : '[no concrete rows]';
+      showMsg(msg);
+      this._updateBtn();
+    },
+    buy() {
+      if (!this._tryBuy()) return;
+      this._activate();
+    },
+    deactivate() {
+      this._updateBtn();
+    },
+    onMessage() {},
+  }),
+
   slide_denied: makeItem({
     label: 'SLIDE DENIED', cost: 4, cat: 'offense',
     msgType: 'slide_denied',
