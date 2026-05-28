@@ -662,6 +662,62 @@ const STORE_ITEMS = {
     },
   }),
 
+  hostile_takeover: makeItem({
+    label: 'HOSTILE TAKEOVER', cost: 30, cat: 'offense',
+    msgType: 'hostile_takeover',
+    tip: "Drain 100% of opponent's gold to you and lock their earning for 10 seconds.",
+    active: false,
+    _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
+      this.active = true;
+      sendWS({ type: 'hostile_takeover', target });
+      this._clearMsg();
+      this._showMsg('[hostile takeover -> ' + target + ']');
+      this._timer = setTimeout(() => this.deactivate(), 10000);
+      this._updateBtn();
+      this._setActive(true);
+    },
+    buy() {
+      if (!pickTarget()) return;
+      if (!this._tryBuy()) return;
+      if (this.active) { this._queue++; this._updateBtn(); showMsg('[takeover queued x' + this._queue + ']'); return; }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._rxClear();
+      goldEarnLocked = false;
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    onMessage(msg) {
+      if (msg.type === 'hostile_takeover' && inGame && !gameOver) {
+        this._rxClear();
+        const drained = gold;
+        gold = 0;
+        goldEl.textContent = 0;
+        goldEarnLocked = true;
+        sendScore();
+        sendWS({ type: 'takeover_credit', amount: drained, target: msg.id });
+        this._rxDismiss = showMsg('[HOSTILE TAKEOVER: lost ' + drained + 'g, earning locked 10s]');
+        this._rxTimer = setTimeout(() => { goldEarnLocked = false; this._rxClear(); }, 10000);
+      }
+      if (msg.type === 'takeover_credit' && msg.id !== myId) {
+        const amt = msg.amount || 0;
+        if (amt > 0) {
+          gold += amt;
+          goldEl.textContent = gold;
+          showMsg('[TAKEOVER: seized ' + amt + 'g!]');
+          sendScore();
+        }
+      }
+    },
+  }),
+
   high_hazard_spawn: makeItem({
     label: 'HIGH-HAZARD SPAWN', cost: 12, cat: 'offense',
     msgType: 'high_hazard_spawn',
