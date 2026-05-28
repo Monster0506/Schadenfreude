@@ -295,8 +295,9 @@ function loop(ts) {
     const swayY = Math.sin(prismPhase * 0.9) * 4;
     const tilt = Math.sin(prismPhase) * 3;
     boardCanvas.style.transform = `translate(${swayX}px,${swayY}px) rotate(${tilt}deg)`;
-  } else if (boardCanvas.style.transform) {
+  } else if (prismPhase !== 0) {
     boardCanvas.style.transform = '';
+    prismPhase = 0;
   }
   drawBoard();
   drawNext();

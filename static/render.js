@@ -97,32 +97,25 @@ function drawBoard() {
   if (staticDistortActive) {
     const imgData = boardCtx.getImageData(0, 0, boardCanvas.width, boardCanvas.height);
     const px = imgData.data;
-    for (let i = 0; i < 200; i++) {
-      const sx = Math.floor(Math.random() * boardCanvas.width);
-      const sy = Math.floor(Math.random() * boardCanvas.height);
-      const tw = 2 + Math.floor(Math.random() * 4);
-      const th = 1 + Math.floor(Math.random() * 3);
-      const dx = sx + Math.floor((Math.random() - 0.5) * 20);
-      const dy = sy;
-      for (let row = 0; row < th; row++) {
-        const srcRow = Math.min(sy + row, boardCanvas.height - 1);
-        const dstRow = Math.min(dy + row, boardCanvas.height - 1);
-        for (let col = 0; col < tw; col++) {
-          const srcCol = Math.min(sx + col, boardCanvas.width - 1);
-          const dstCol = Math.min(Math.max(dx + col, 0), boardCanvas.width - 1);
-          const si = (srcRow * boardCanvas.width + srcCol) * 4;
-          const di = (dstRow * boardCanvas.width + dstCol) * 4;
-          px[di] = px[si]; px[di+1] = px[si+1]; px[di+2] = px[si+2]; px[di+3] = px[si+3];
+    const W = boardCanvas.width, H = boardCanvas.height;
+    for (let i = 0; i < 80; i++) {
+      const sx = Math.floor(Math.random() * W);
+      const sy = Math.floor(Math.random() * H);
+      const tw = 2 + Math.floor(Math.random() * 5);
+      const dx = Math.min(Math.max(sx + Math.floor((Math.random() - 0.5) * 18), 0), W - tw);
+      const si = (sy * W + sx) * 4;
+      const di = (sy * W + dx) * 4;
+      for (let col = 0; col < tw; col++) {
+        const s = si + col * 4, d = di + col * 4;
+        if (s + 3 < px.length && d + 3 < px.length) {
+          px[d] = px[s]; px[d+1] = px[s+1]; px[d+2] = px[s+2]; px[d+3] = px[s+3];
         }
       }
     }
     boardCtx.putImageData(imgData, 0, 0);
-    for (let i = 0; i < 120; i++) {
-      const rx = Math.random() * boardCanvas.width;
-      const ry = Math.random() * boardCanvas.height;
-      const alpha = 0.1 + Math.random() * 0.2;
-      boardCtx.fillStyle = `rgba(200,200,220,${alpha})`;
-      boardCtx.fillRect(rx, ry, 2 + Math.random() * 3, 1);
+    for (let i = 0; i < 60; i++) {
+      boardCtx.fillStyle = `rgba(200,200,220,${0.08 + Math.random() * 0.18})`;
+      boardCtx.fillRect(Math.random() * W, Math.random() * H, 1 + Math.random() * 4, 1);
     }
   }
   if (singularityActive) {
