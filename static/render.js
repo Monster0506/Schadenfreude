@@ -205,6 +205,11 @@ function _layoutMsgs() {
   }
 }
 
+function clearAllMsgs() {
+  msgStack.querySelectorAll('.ws-msg').forEach(el => el.remove());
+  msgStack.style.height = '0';
+}
+
 function showMsg(text) {
   const el = document.createElement('div');
   el.className = 'ws-msg';

@@ -211,6 +211,10 @@ function backToPregame() {
   cancelAnimationFrame(dropTimer);
   clearAllDAS();
   for (const item of Object.values(STORE_ITEMS)) item.reset();
+  clearAllMsgs();
+  boardCanvas.style.transform = '';
+  const storeEl = document.getElementById('store-panel');
+  if (storeEl) storeEl.style.opacity = '';
   inGame = false;
   gameOver = false;
   hideOverlay();
