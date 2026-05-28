@@ -173,6 +173,10 @@ function tryRotate() {
 }
 
 function endGame() {
+  if (lossProtectionActive) {
+    lossProtectionGold = Math.floor(gold / 2);
+  }
+  STORE_ITEMS.loss_protection.deactivate();
   gameOver = true;
   cancelAnimationFrame(dropTimer);
   sendWS({ type: 'game_over' });
@@ -198,10 +202,14 @@ function startGame() {
   elapsed = 0; goldElapsed = 0;
   clearAllDAS();
   for (const item of Object.values(STORE_ITEMS)) item.reset();
+  if (lossProtectionGold > 0) {
+    gold = lossProtectionGold;
+    lossProtectionGold = 0;
+  }
   scoreEl.textContent = 0;
   levelEl.textContent = 1;
   linesEl.textContent = 0;
-  goldEl.textContent = 0;
+  goldEl.textContent = gold;
   heldPiece = null;
   holdUsed = false;
   nextPieceOverrides = [];

@@ -137,6 +137,40 @@ const STORE_ITEMS = {
     },
   }),
 
+  loss_protection: makeItem({
+    label: 'LOSS PROTECTION', cost: 3, cat: 'defensive',
+    tip: 'Keep 50% of your gold if you top out while active.',
+    active: false,
+    _activate() {
+      this.active = true;
+      lossProtectionActive = true;
+      this._clearMsg();
+      this._showMsg('[loss protection active]');
+      this._setActive(true);
+      this._updateBtn();
+    },
+    buy() {
+      if (!this._tryBuy()) return;
+      if (this.active) {
+        this._queue++;
+        this._updateBtn();
+        showMsg('[loss protection queued x' + this._queue + ']');
+        return;
+      }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      lossProtectionActive = false;
+      lossProtectionGold = 0;
+      this._clearMsg();
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    onMessage() {},
+  }),
+
   slide_denied: makeItem({
     label: 'SLIDE DENIED', cost: 4, cat: 'offense',
     msgType: 'slide_denied',
