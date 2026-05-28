@@ -199,6 +199,67 @@ const STORE_ITEMS = {
     onMessage() {},
   }),
 
+  panic_button: makeItem({
+    label: 'PANIC BUTTON', cost: 6, cat: 'defensive',
+    tip: 'Instantly clears the bottom-most row, including indestructible blocks.',
+    active: false,
+    _activate() {
+      for (let r = ROWS - 1; r >= 0; r--) {
+        if (board[r].some(v => v !== 0)) {
+          board.splice(r, 1);
+          board.unshift(new Array(COLS).fill(0));
+          showMsg('[panic: bottom row cleared]');
+          this._updateBtn();
+          return;
+        }
+      }
+      showMsg('[panic: board already empty]');
+      this._updateBtn();
+    },
+    buy() {
+      if (!this._tryBuy()) return;
+      this._activate();
+    },
+    deactivate() { this._updateBtn(); },
+    onMessage() {},
+  }),
+
+  clean_sweep: makeItem({
+    label: 'CLEAN SWEEP', cost: 10, cat: 'defensive',
+    tip: 'Removes your active piece and fills single-cell holes in your top 3 settled rows.',
+    active: false,
+    _activate() {
+      piece = drawFromQueue();
+      nextPiece = pieceQueue[0];
+      holdUsed = false;
+
+      let filled = 0;
+      for (let r = 0; r < Math.min(3, ROWS); r++) {
+        for (let c = 0; c < COLS; c++) {
+          if (board[r][c] !== 0) continue;
+          const neighbors = [
+            r > 0 && board[r-1][c],
+            r < ROWS-1 && board[r+1][c],
+            c > 0 && board[r][c-1],
+            c < COLS-1 && board[r][c+1],
+          ].filter(v => v && v !== 0);
+          if (neighbors.length >= 2) {
+            board[r][c] = neighbors[Math.floor(Math.random() * neighbors.length)];
+            filled++;
+          }
+        }
+      }
+      showMsg('[clean sweep: +' + filled + ' gap' + (filled !== 1 ? 's' : '') + ' filled]');
+      this._updateBtn();
+    },
+    buy() {
+      if (!this._tryBuy()) return;
+      this._activate();
+    },
+    deactivate() { this._updateBtn(); },
+    onMessage() {},
+  }),
+
   slide_denied: makeItem({
     label: 'SLIDE DENIED', cost: 4, cat: 'offense',
     msgType: 'slide_denied',
