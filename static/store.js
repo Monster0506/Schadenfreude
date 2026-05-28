@@ -17,6 +17,7 @@ const itemBase = {
     if (gold < cost) return false;
     gold -= cost;
     goldEl.textContent = gold;
+    sendScore();
     return true;
   },
   _updateBtn() {
@@ -273,6 +274,7 @@ const STORE_ITEMS = {
       if (maxOppGold > gold) {
         gold = maxOppGold;
         goldEl.textContent = gold;
+        sendScore();
         showMsg('[equalized to ' + gold + 'g]');
       } else {
         showMsg('[already at max gold]');
@@ -301,7 +303,7 @@ const STORE_ITEMS = {
       for (let r = Math.floor(ROWS / 2); r < ROWS; r++) {
         board[r] = new Array(COLS).fill(0);
       }
-      if (banked > 0) { gold += banked; goldEl.textContent = gold; }
+      if (banked > 0) { gold += banked; goldEl.textContent = gold; sendScore(); }
       invulnUntil = Date.now() + 5000;
       showMsg('[EVAC: cleared + ' + banked + 'g banked + 5s shield]');
       this._updateBtn();

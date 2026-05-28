@@ -17,7 +17,7 @@ type Msg struct {
 	Score   int      `json:"score,omitempty"`
 	Level   int      `json:"level,omitempty"`
 	Lines   int      `json:"lines,omitempty"`
-	Gold    int      `json:"gold,omitempty"`
+	Gold    int      `json:"gold"`
 	Players    []string `json:"players,omitempty"`
 	Creator    bool     `json:"creator,omitempty"`
 	Board      []int    `json:"board,omitempty"`

@@ -97,7 +97,7 @@ function addOpponent(id) {
     '<canvas id="qscan-canvas-' + id + '" class="peek-canvas hidden" width="60" height="20"></canvas>' +
     '<div id="qscan-gold-' + id + '" class="opp-sub hidden"></div>';
   document.getElementById('opponents').appendChild(card);
-  opponents.set(id, { score: 0, level: 1, gameOver: false });
+  opponents.set(id, { score: 0, level: 1, lines: 0, gold: 0, gameOver: false });
 }
 
 function removeOpponent(id) {
@@ -110,6 +110,7 @@ function updateOpponent(id, data) {
   if (!opponents.has(id)) addOpponent(id);
   const opp = opponents.get(id);
   Object.assign(opp, data);
+  if ('gold' in data) opp.gold = data.gold;
   const se  = document.getElementById('opp-score-' + id);
   const sub = document.getElementById('opp-sub-' + id);
   if (se)  se.textContent  = opp.score;
