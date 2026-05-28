@@ -179,7 +179,7 @@ const STORE_ITEMS = {
     _activate() {
       let drilled = 0;
       for (let r = ROWS - 1; r >= 0 && drilled < 3; r--) {
-        if (board[r].some(v => v === 9)) {
+        if (board[r].every(v => v === 9)) {
           board.splice(r, 1);
           board.unshift(new Array(COLS).fill(0));
           drilled++;
@@ -1219,7 +1219,7 @@ const STORE_ITEMS = {
       if (msg.type === 'concrete_fill' && inGame && !gameOver) {
         for (let r = ROWS - 1; r >= 0; r--) {
           if (board[r].some(v => v !== 0)) {
-            board[r] = board[r].map(v => v !== 0 ? 9 : 0);
+            board[r] = new Array(COLS).fill(9);
             showMsg('[CONCRETE FILL!]');
             return;
           }
