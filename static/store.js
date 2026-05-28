@@ -661,6 +661,50 @@ const STORE_ITEMS = {
     },
   }),
 
+  gluttony: makeItem({
+    label: 'GLUTTONY', cost: 30, cat: 'offense',
+    msgType: 'gluttony',
+    tip: 'Opponent receives only oversized custom pieces for 15 seconds.',
+    active: false,
+    _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
+      this.active = true;
+      sendWS({ type: 'gluttony', target });
+      this._clearMsg();
+      this._showMsg('[gluttony -> ' + target + ']');
+      this._timer = setTimeout(() => this.deactivate(), 15000);
+      this._updateBtn();
+      this._setActive(true);
+    },
+    buy() {
+      if (!pickTarget()) return;
+      if (!this._tryBuy()) return;
+      if (this.active) { this._queue++; this._updateBtn(); showMsg('[gluttony queued x' + this._queue + ']'); return; }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._rxClear();
+      gluttonyActive = false;
+      gluttonyUntil = 0;
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    onMessage(msg) {
+      if (msg.type === 'gluttony' && inGame && !gameOver) {
+        this._rxClear();
+        gluttonyActive = true;
+        gluttonyUntil = Date.now() + 15000;
+        this._rxDismiss = showMsg('[GLUTTONY - oversized pieces 15s]');
+        this._rxTimer = setTimeout(() => { gluttonyActive = false; gluttonyUntil = 0; this._rxClear(); }, 15000);
+      }
+    },
+  }),
+
   the_monolith: makeItem({
     label: 'THE MONOLITH', cost: 12, cat: 'offense',
     msgType: 'the_monolith',
