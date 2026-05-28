@@ -179,16 +179,16 @@ const STORE_ITEMS = {
     active: false,
     _activate() {
       let drilled = 0;
-      for (let r = ROWS - 1; r >= 0 && drilled < 3; r--) {
-        if (board[r].every(v => v === 9)) {
-          board.splice(r, 1);
-          board.unshift(new Array(COLS).fill(0));
-          drilled++;
-          r++;
+      outer: for (let r = ROWS - 1; r >= 0; r--) {
+        for (let c = 0; c < COLS; c++) {
+          if (board[r][c] === 9) {
+            board[r][c] = 0;
+            drilled++;
+            if (drilled >= 3) break outer;
+          }
         }
       }
-      const msg = drilled > 0 ? '[drilled ' + drilled + ' row' + (drilled > 1 ? 's' : '') + ']' : '[no concrete rows]';
-      showMsg(msg);
+      showMsg(drilled > 0 ? '[drilled ' + drilled + ' concrete block' + (drilled > 1 ? 's' : '') + ']' : '[no concrete]');
       this._updateBtn();
     },
     buy() {
