@@ -100,7 +100,7 @@ const STORE_ITEMS = {
   }),
 
   shield: makeItem({
-    label: 'SHIELD', cost: 2, cat: 'defense',
+    label: 'SHIELD', cost: 2, cat: 'defensive',
     active: false,
     _activate() {
       this.active = true;
@@ -663,7 +663,7 @@ const STORE_ITEMS = {
   }),
 
   hostile_takeover: makeItem({
-    label: 'HOSTILE TAKEOVER', cost: 30, cat: 'offense',
+    label: 'HOSTILE TAKEOVER', cost: 30, cat: 'economic',
     msgType: 'hostile_takeover',
     tip: "Drain 100% of opponent's gold to you and lock their earning for 10 seconds.",
     active: false,
@@ -719,7 +719,7 @@ const STORE_ITEMS = {
   }),
 
   high_hazard_spawn: makeItem({
-    label: 'HIGH-HAZARD SPAWN', cost: 12, cat: 'offense',
+    label: 'HIGH-HAZARD SPAWN', cost: 12, cat: 'economic',
     msgType: 'high_hazard_spawn',
     tip: 'Force-spawns 5 gold blocks in dangerous positions near the top of opponent board.',
     active: false,
@@ -763,7 +763,7 @@ const STORE_ITEMS = {
   }),
 
   financial_crash: makeItem({
-    label: 'FINANCIAL CRASH', cost: 10, cat: 'offense',
+    label: 'FINANCIAL CRASH', cost: 10, cat: 'economic',
     msgType: 'financial_crash',
     tip: "Deletes 50% of opponent's current gold balance.",
     active: false,
@@ -804,7 +804,7 @@ const STORE_ITEMS = {
   }),
 
   tax_freeze: makeItem({
-    label: 'TAX FREEZE', cost: 7, cat: 'offense',
+    label: 'TAX FREEZE', cost: 7, cat: 'economic',
     msgType: 'tax_freeze',
     tip: "Opponent can't earn gold from cleared lines or spawns for 15 seconds.",
     active: false,
@@ -846,7 +846,7 @@ const STORE_ITEMS = {
   }),
 
   inflation: makeItem({
-    label: 'INFLATION', cost: 6, cat: 'offense',
+    label: 'INFLATION', cost: 6, cat: 'economic',
     msgType: 'inflation',
     tip: "Doubles opponent's store prices for 15 seconds.",
     active: false,
@@ -888,7 +888,7 @@ const STORE_ITEMS = {
   }),
 
   irs_audit: makeItem({
-    label: 'IRS AUDIT', cost: 5, cat: 'offense',
+    label: 'IRS AUDIT', cost: 5, cat: 'economic',
     msgType: 'irs_audit',
     tip: "Steals all gold blocks from opponent's board and adds them to yours.",
     active: false,
@@ -942,7 +942,7 @@ const STORE_ITEMS = {
   }),
 
   bribe: makeItem({
-    label: 'BRIBE', cost: 4, cat: 'offense',
+    label: 'BRIBE', cost: 4, cat: 'economic',
     msgType: 'bribe',
     tip: "Locks opponent out of the store for 10 seconds.",
     active: false,
@@ -1918,7 +1918,7 @@ function applyAttack() {
   showMsg('[attack received!]');
 }
 
-const STORE_CAT_ORDER = ['intel', 'defense', 'offense'];
+const STORE_CAT_ORDER = ['intel', 'defensive', 'offense', 'economic'];
 
 function buildStore() {
   const container = document.getElementById('store');

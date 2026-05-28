@@ -182,9 +182,10 @@ button:hover { background: #3a3d4e; }
 .store-btn:disabled { opacity: 0.3; cursor: default; }
 .store-btn:disabled:hover { background: transparent; }
 
-.store-btn[data-cat="intel"]   { border-left-color: #5ac4c4; }
-.store-btn[data-cat="defense"] { border-left-color: #5a8fc4; }
-.store-btn[data-cat="offense"] { border-left-color: #c45a6a; }
+.store-btn[data-cat="intel"]    { border-left-color: #5ac4c4; }
+.store-btn[data-cat="defensive"]{ border-left-color: #5a8fc4; }
+.store-btn[data-cat="offense"]  { border-left-color: #c45a6a; }
+.store-btn[data-cat="economic"] { border-left-color: hsl(45,80%,55%); }
 
 .store-label { flex: 1; }
 
