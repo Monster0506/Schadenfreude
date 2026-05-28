@@ -272,12 +272,13 @@ const STORE_ITEMS = {
         if (!opp.gameOver && (opp.gold ?? 0) > maxOppGold) maxOppGold = opp.gold ?? 0;
       }
       if (maxOppGold > gold) {
+        const gained = maxOppGold - gold;
         gold = maxOppGold;
         goldEl.textContent = gold;
         sendScore();
-        showMsg('[equalized to ' + gold + 'g]');
+        showMsg('[equalized: +' + gained + 'g → ' + gold + 'g]');
       } else {
-        showMsg('[already at max gold]');
+        showMsg('[already at max gold (' + gold + 'g)]');
       }
       this._updateBtn();
     },

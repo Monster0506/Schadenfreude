@@ -232,6 +232,7 @@ function backToPregame() {
 }
 
 function startGame() {
+  for (const opp of opponents.values()) opp.gameOver = false;
   board = createBoard();
   score = 0; level = 1; lines = 0; gold = 0;
   paused = false; gameOver = false;
