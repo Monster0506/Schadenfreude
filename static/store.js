@@ -464,6 +464,68 @@ const STORE_ITEMS = {
     },
   }),
 
+  grid_shifter: makeItem({
+    label: 'GRID SHIFTER', cost: 6, cat: 'offense',
+    msgType: 'grid_shifter',
+    tip: 'Shifts 3 random opponent rows left or right by 1, disrupting their stack.',
+    active: false,
+    _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
+      this.active = true;
+      sendWS({ type: 'grid_shifter', target });
+      this._clearMsg();
+      this._showMsg('[grid shift -> ' + target + ']');
+      this._timer = setTimeout(() => this.deactivate(), 1000);
+      this._updateBtn();
+      this._setActive(true);
+    },
+    buy() {
+      if (!pickTarget()) return;
+      if (!this._tryBuy()) return;
+      if (this.active) {
+        this._queue++;
+        this._updateBtn();
+        showMsg('[grid shifter queued x' + this._queue + ']');
+        return;
+      }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    onMessage(msg) {
+      if (msg.type === 'grid_shifter' && inGame && !gameOver) {
+        const nonEmpty = [];
+        for (let r = 0; r < ROWS; r++) {
+          if (board[r].some(v => v !== 0)) nonEmpty.push(r);
+        }
+        const count = Math.min(3, nonEmpty.length);
+        const chosen = [];
+        while (chosen.length < count) {
+          const idx = nonEmpty[Math.floor(Math.random() * nonEmpty.length)];
+          if (!chosen.includes(idx)) chosen.push(idx);
+        }
+        chosen.forEach(r => {
+          const dir = Math.random() < 0.5 ? -1 : 1;
+          if (dir === -1) {
+            board[r].shift();
+            board[r].push(0);
+          } else {
+            board[r].pop();
+            board[r].unshift(0);
+          }
+        });
+        showMsg('[GRID SHIFTED]');
+      }
+    },
+  }),
+
   qscan: makeItem({
     label: 'Q-SCAN', cost: 2, cat: 'intel',
     msgType: 'queue_scan',
