@@ -661,6 +661,44 @@ const STORE_ITEMS = {
     },
   }),
 
+  mega_mino: makeItem({
+    label: 'MEGA-MINO', cost: 9, cat: 'offense',
+    msgType: 'mega_mino',
+    tip: "Force a 4x4 solid block as opponent's next piece.",
+    active: false,
+    _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
+      this.active = true;
+      sendWS({ type: 'mega_mino', target });
+      this._clearMsg();
+      this._showMsg('[mega-mino -> ' + target + ']');
+      this._timer = setTimeout(() => this.deactivate(), 1000);
+      this._updateBtn();
+      this._setActive(true);
+    },
+    buy() {
+      if (!pickTarget()) return;
+      if (!this._tryBuy()) return;
+      if (this.active) { this._queue++; this._updateBtn(); showMsg('[mega-mino queued x' + this._queue + ']'); return; }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    onMessage(msg) {
+      if (msg.type === 'mega_mino' && inGame && !gameOver) {
+        nextPieceOverrides.push(CUSTOM_PIECES.mega_mino.map(r => [...r]));
+        showMsg('[MEGA-MINO incoming!]');
+      }
+    },
+  }),
+
   auto_rotator: makeItem({
     label: 'AUTO-ROTATOR', cost: 8, cat: 'offense',
     msgType: 'auto_rotator',
