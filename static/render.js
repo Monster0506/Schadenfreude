@@ -47,8 +47,14 @@ function drawBoard() {
     boardCtx.stroke();
   }
   for (let r = 0; r < ROWS; r++)
-    for (let c = 0; c < COLS; c++)
-      drawCell(boardCtx, c, r, board[r][c]);
+    for (let c = 0; c < COLS; c++) {
+      if (ghostBoardActive && board[r][c]) {
+        boardCtx.fillStyle = 'rgba(255,255,255,0.04)';
+        boardCtx.fillRect(c * CELL + 1, r * CELL + 1, CELL - 2, CELL - 2);
+      } else {
+        drawCell(boardCtx, c, r, board[r][c]);
+      }
+    }
 
   if (magColActive) {
     boardCtx.fillStyle = 'rgba(255,160,50,0.13)';

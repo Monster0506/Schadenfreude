@@ -661,6 +661,48 @@ const STORE_ITEMS = {
     },
   }),
 
+  ghost_board: makeItem({
+    label: 'GHOST BOARD', cost: 8, cat: 'offense',
+    msgType: 'ghost_board',
+    tip: "Opponent's settled stack becomes invisible for 8 seconds.",
+    active: false,
+    _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
+      this.active = true;
+      sendWS({ type: 'ghost_board', target });
+      this._clearMsg();
+      this._showMsg('[ghost board -> ' + target + ']');
+      this._timer = setTimeout(() => this.deactivate(), 8000);
+      this._updateBtn();
+      this._setActive(true);
+    },
+    buy() {
+      if (!pickTarget()) return;
+      if (!this._tryBuy()) return;
+      if (this.active) { this._queue++; this._updateBtn(); showMsg('[ghost board queued x' + this._queue + ']'); return; }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._rxClear();
+      ghostBoardActive = false;
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    onMessage(msg) {
+      if (msg.type === 'ghost_board' && inGame && !gameOver) {
+        this._rxClear();
+        ghostBoardActive = true;
+        this._rxDismiss = showMsg('[GHOST BOARD - 8s]');
+        this._rxTimer = setTimeout(() => { ghostBoardActive = false; this._rxClear(); }, 8000);
+      }
+    },
+  }),
+
   concrete_fill: makeItem({
     label: 'CONCRETE FILL', cost: 6, cat: 'offense',
     msgType: 'concrete_fill',
