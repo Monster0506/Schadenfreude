@@ -662,6 +662,47 @@ const STORE_ITEMS = {
     },
   }),
 
+  financial_crash: makeItem({
+    label: 'FINANCIAL CRASH', cost: 10, cat: 'offense',
+    msgType: 'financial_crash',
+    tip: "Deletes 50% of opponent's current gold balance.",
+    active: false,
+    _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
+      this.active = true;
+      sendWS({ type: 'financial_crash', target });
+      this._clearMsg();
+      this._showMsg('[financial crash -> ' + target + ']');
+      this._timer = setTimeout(() => this.deactivate(), 1000);
+      this._updateBtn();
+      this._setActive(true);
+    },
+    buy() {
+      if (!pickTarget()) return;
+      if (!this._tryBuy()) return;
+      if (this.active) { this._queue++; this._updateBtn(); showMsg('[crash queued x' + this._queue + ']'); return; }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    onMessage(msg) {
+      if (msg.type === 'financial_crash' && inGame && !gameOver) {
+        const lost = Math.floor(gold / 2);
+        gold -= lost;
+        goldEl.textContent = gold;
+        showMsg('[FINANCIAL CRASH: -' + lost + 'g!]');
+        sendScore();
+      }
+    },
+  }),
+
   tax_freeze: makeItem({
     label: 'TAX FREEZE', cost: 7, cat: 'offense',
     msgType: 'tax_freeze',
