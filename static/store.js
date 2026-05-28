@@ -661,6 +661,48 @@ const STORE_ITEMS = {
     },
   }),
 
+  butter_fingers: makeItem({
+    label: 'BUTTER FINGERS', cost: 4, cat: 'offense',
+    msgType: 'butter_fingers',
+    tip: "Disables opponent's hold piece for 15 seconds.",
+    active: false,
+    _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
+      this.active = true;
+      sendWS({ type: 'butter_fingers', target });
+      this._clearMsg();
+      this._showMsg('[butter fingers -> ' + target + ']');
+      this._timer = setTimeout(() => this.deactivate(), 15000);
+      this._updateBtn();
+      this._setActive(true);
+    },
+    buy() {
+      if (!pickTarget()) return;
+      if (!this._tryBuy()) return;
+      if (this.active) { this._queue++; this._updateBtn(); showMsg('[butter fingers queued x' + this._queue + ']'); return; }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._rxClear();
+      holdDisabled = false;
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    onMessage(msg) {
+      if (msg.type === 'butter_fingers' && inGame && !gameOver) {
+        this._rxClear();
+        holdDisabled = true;
+        this._rxDismiss = showMsg('[BUTTER FINGERS - hold disabled 15s]');
+        this._rxTimer = setTimeout(() => { holdDisabled = false; this._rxClear(); }, 15000);
+      }
+    },
+  }),
+
   the_singularity: makeItem({
     label: 'THE SINGULARITY', cost: 30, cat: 'offense',
     msgType: 'the_singularity',
