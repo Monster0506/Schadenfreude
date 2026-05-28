@@ -70,6 +70,9 @@ let lossProtectionActive = false;
 let lossProtectionGold = 0;
 let invulnUntil = 0;
 
+// input latency tracking
+const _latencyPending = new Set();
+
 // economic effects
 let storeBribeActive = false;
 let taxFreezeActive = false;

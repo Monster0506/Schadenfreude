@@ -44,10 +44,12 @@ document.addEventListener('keydown', e => {
   }
   if (inputDelayMs > 0 && ['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp', ' '].includes(e.key)) {
     e.preventDefault();
-    if (e.repeat) return;
-    const delayedKey = e.key;
+    if (_latencyPending.has(e.key)) return;
+    _latencyPending.add(e.key);
     clearAllDAS();
+    const delayedKey = e.key;
     setTimeout(() => {
+      _latencyPending.delete(delayedKey);
       if (!inGame || gameOver || paused) return;
       handleMovementKey(delayedKey);
     }, inputDelayMs);
