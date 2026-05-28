@@ -93,6 +93,16 @@ function drawBoard() {
     boardCtx.strokeRect(2, 2, boardCanvas.width - 4, boardCanvas.height - 4);
     boardCtx.lineWidth = 1;
   }
+  if (staticDistortActive) {
+    for (let i = 0; i < 400; i++) {
+      const rx = Math.random() * boardCanvas.width;
+      const ry = Math.random() * boardCanvas.height;
+      const rs = 2 + Math.random() * 3;
+      const alpha = 0.15 + Math.random() * 0.25;
+      boardCtx.fillStyle = `rgba(200,200,220,${alpha})`;
+      boardCtx.fillRect(rx, ry, rs, rs);
+    }
+  }
   if (singularityActive) {
     const cx = Math.floor(COLS / 2) * CELL;
     const pulse = 0.3 + 0.2 * Math.sin(performance.now() / 180);

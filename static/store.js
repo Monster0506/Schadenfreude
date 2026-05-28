@@ -661,6 +661,48 @@ const STORE_ITEMS = {
     },
   }),
 
+  static_distort: makeItem({
+    label: 'STATIC DISTORT', cost: 5, cat: 'offense',
+    msgType: 'static_distort',
+    tip: 'Overlays TV static noise on opponent board for 10 seconds.',
+    active: false,
+    _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
+      this.active = true;
+      sendWS({ type: 'static_distort', target });
+      this._clearMsg();
+      this._showMsg('[static distort -> ' + target + ']');
+      this._timer = setTimeout(() => this.deactivate(), 10000);
+      this._updateBtn();
+      this._setActive(true);
+    },
+    buy() {
+      if (!pickTarget()) return;
+      if (!this._tryBuy()) return;
+      if (this.active) { this._queue++; this._updateBtn(); showMsg('[static queued x' + this._queue + ']'); return; }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._rxClear();
+      staticDistortActive = false;
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    onMessage(msg) {
+      if (msg.type === 'static_distort' && inGame && !gameOver) {
+        this._rxClear();
+        staticDistortActive = true;
+        this._rxDismiss = showMsg('[STATIC DISTORT - 10s]');
+        this._rxTimer = setTimeout(() => { staticDistortActive = false; this._rxClear(); }, 10000);
+      }
+    },
+  }),
+
   camouflage: makeItem({
     label: 'CAMOUFLAGE', cost: 4, cat: 'offense',
     msgType: 'camouflage',
