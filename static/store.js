@@ -661,6 +661,50 @@ const STORE_ITEMS = {
     },
   }),
 
+  acid_rain: makeItem({
+    label: 'ACID RAIN', cost: 13, cat: 'offense',
+    msgType: 'acid_rain',
+    tip: 'Instantly dissolves ~25% of settled blocks on opponent board.',
+    active: false,
+    _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
+      this.active = true;
+      sendWS({ type: 'acid_rain', target });
+      this._clearMsg();
+      this._showMsg('[acid rain -> ' + target + ']');
+      this._timer = setTimeout(() => this.deactivate(), 1000);
+      this._updateBtn();
+      this._setActive(true);
+    },
+    buy() {
+      if (!pickTarget()) return;
+      if (!this._tryBuy()) return;
+      if (this.active) { this._queue++; this._updateBtn(); showMsg('[acid rain queued x' + this._queue + ']'); return; }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    onMessage(msg) {
+      if (msg.type === 'acid_rain' && inGame && !gameOver) {
+        let dissolved = 0;
+        for (let r = 0; r < ROWS; r++)
+          for (let c = 0; c < COLS; c++)
+            if (board[r][c] && board[r][c] !== 9 && Math.random() < 0.25) {
+              board[r][c] = 0;
+              dissolved++;
+            }
+        showMsg('[ACID RAIN: ' + dissolved + ' blocks dissolved!]');
+      }
+    },
+  }),
+
   mino_decay: makeItem({
     label: 'MINO DECAY', cost: 11, cat: 'offense',
     msgType: 'mino_decay',
