@@ -662,6 +662,48 @@ const STORE_ITEMS = {
     },
   }),
 
+  tax_freeze: makeItem({
+    label: 'TAX FREEZE', cost: 7, cat: 'offense',
+    msgType: 'tax_freeze',
+    tip: "Opponent can't earn gold from cleared lines or spawns for 15 seconds.",
+    active: false,
+    _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
+      this.active = true;
+      sendWS({ type: 'tax_freeze', target });
+      this._clearMsg();
+      this._showMsg('[tax freeze -> ' + target + ']');
+      this._timer = setTimeout(() => this.deactivate(), 15000);
+      this._updateBtn();
+      this._setActive(true);
+    },
+    buy() {
+      if (!pickTarget()) return;
+      if (!this._tryBuy()) return;
+      if (this.active) { this._queue++; this._updateBtn(); showMsg('[tax freeze queued x' + this._queue + ']'); return; }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._rxClear();
+      taxFreezeActive = false;
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    onMessage(msg) {
+      if (msg.type === 'tax_freeze' && inGame && !gameOver) {
+        this._rxClear();
+        taxFreezeActive = true;
+        this._rxDismiss = showMsg('[TAX FREEZE - no gold 15s]');
+        this._rxTimer = setTimeout(() => { taxFreezeActive = false; this._rxClear(); }, 15000);
+      }
+    },
+  }),
+
   inflation: makeItem({
     label: 'INFLATION', cost: 6, cat: 'offense',
     msgType: 'inflation',

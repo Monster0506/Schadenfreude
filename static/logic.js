@@ -111,7 +111,7 @@ function lock() {
     scoreChanged = true;
   }
 
-  if (goldCleared) {
+  if (goldCleared && !taxFreezeActive) {
     gold += goldCleared;
     goldEl.textContent = gold;
     scoreChanged = true;
@@ -262,7 +262,7 @@ function loop(ts) {
 
   goldElapsed += dt;
   if (goldElapsed >= GOLD_INTERVAL) {
-    spawnGold();
+    if (!taxFreezeActive) spawnGold();
     goldElapsed = 0;
   }
 
