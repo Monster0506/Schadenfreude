@@ -69,11 +69,15 @@ function handleWS(msg) {
       }
       break;
   }
-  if (inGame && !gameOver && STORE_ITEMS.shield.active && msg.id !== myId) {
+  if (inGame && !gameOver && msg.id !== myId && (STORE_ITEMS.shield.active || Date.now() < invulnUntil)) {
     const hostile = Object.values(STORE_ITEMS).some(i => i.msgType === msg.type);
     if (hostile) {
-      STORE_ITEMS.shield.deactivate();
-      showMsg('[attack blocked by shield!]');
+      if (STORE_ITEMS.shield.active) {
+        STORE_ITEMS.shield.deactivate();
+        showMsg('[attack blocked by shield!]');
+      } else {
+        showMsg('[attack blocked by evac shield!]');
+      }
       return;
     }
   }

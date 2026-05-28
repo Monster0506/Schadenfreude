@@ -76,6 +76,12 @@ function drawBoard() {
     boardCtx.strokeRect(2, 2, boardCanvas.width - 4, boardCanvas.height - 4);
     boardCtx.lineWidth = 1;
   }
+  if (Date.now() < invulnUntil) {
+    boardCtx.strokeStyle = 'rgba(255,200,50,0.85)';
+    boardCtx.lineWidth = 4;
+    boardCtx.strokeRect(2, 2, boardCanvas.width - 4, boardCanvas.height - 4);
+    boardCtx.lineWidth = 1;
+  }
 }
 
 function drawNext() {

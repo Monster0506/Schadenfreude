@@ -260,6 +260,59 @@ const STORE_ITEMS = {
     onMessage() {},
   }),
 
+  equalizer: makeItem({
+    label: 'EQUALIZER', cost: 12, cat: 'defensive',
+    tip: "If any opponent has more gold than you, match their balance.",
+    active: false,
+    _activate() {
+      let maxOppGold = 0;
+      for (const [, opp] of opponents) {
+        if (!opp.gameOver && (opp.gold ?? 0) > maxOppGold) maxOppGold = opp.gold ?? 0;
+      }
+      if (maxOppGold > gold) {
+        gold = maxOppGold;
+        goldEl.textContent = gold;
+        showMsg('[equalized to ' + gold + 'g]');
+      } else {
+        showMsg('[already at max gold]');
+      }
+      this._updateBtn();
+    },
+    buy() {
+      if (!this._tryBuy()) return;
+      this._activate();
+    },
+    deactivate() { this._updateBtn(); },
+    onMessage() {},
+  }),
+
+  emergency_evac: makeItem({
+    label: 'EMERGENCY EVAC', cost: 30, cat: 'defensive',
+    tip: 'Clears bottom half of board, banks all floating gold, and gives 5s invulnerability.',
+    active: false,
+    _activate() {
+      let banked = 0;
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          if (board[r][c] === 8) { banked++; board[r][c] = 0; }
+        }
+      }
+      for (let r = Math.floor(ROWS / 2); r < ROWS; r++) {
+        board[r] = new Array(COLS).fill(0);
+      }
+      if (banked > 0) { gold += banked; goldEl.textContent = gold; }
+      invulnUntil = Date.now() + 5000;
+      showMsg('[EVAC: cleared + ' + banked + 'g banked + 5s shield]');
+      this._updateBtn();
+    },
+    buy() {
+      if (!this._tryBuy()) return;
+      this._activate();
+    },
+    deactivate() { this._updateBtn(); },
+    onMessage() {},
+  }),
+
   slide_denied: makeItem({
     label: 'SLIDE DENIED', cost: 4, cat: 'offense',
     msgType: 'slide_denied',
