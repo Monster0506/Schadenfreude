@@ -661,6 +661,49 @@ const STORE_ITEMS = {
     },
   }),
 
+  queue_lock: makeItem({
+    label: 'QUEUE LOCK', cost: 5, cat: 'offense',
+    msgType: 'queue_lock',
+    tip: "Forces opponent's next 5 pieces to be Z-pieces.",
+    active: false,
+    _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
+      this.active = true;
+      sendWS({ type: 'queue_lock', target });
+      this._clearMsg();
+      this._showMsg('[queue lock -> ' + target + ']');
+      this._timer = setTimeout(() => this.deactivate(), 20000);
+      this._updateBtn();
+      this._setActive(true);
+    },
+    buy() {
+      if (!pickTarget()) return;
+      if (!this._tryBuy()) return;
+      if (this.active) { this._queue++; this._updateBtn(); showMsg('[queue lock queued x' + this._queue + ']'); return; }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._rxClear();
+      queueLockRemaining = 0;
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    onMessage(msg) {
+      if (msg.type === 'queue_lock' && inGame && !gameOver) {
+        this._rxClear();
+        queueLockRemaining = 5;
+        queueLockPieceId = 5; // Z-piece (index 5 in PIECES)
+        this._rxDismiss = showMsg('[QUEUE LOCKED: Z x5]');
+        this._rxTimer = setTimeout(() => { queueLockRemaining = 0; this._rxClear(); }, 20000);
+      }
+    },
+  }),
+
   butter_fingers: makeItem({
     label: 'BUTTER FINGERS', cost: 4, cat: 'offense',
     msgType: 'butter_fingers',
