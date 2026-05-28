@@ -1,13 +1,7 @@
-document.addEventListener('keydown', e => {
-  if (!inGame) return;
-  if (gameOver) {
-    if (e.key === 'Enter') sendWS({ type: 'play_again' });
-    return;
-  }
-  switch (e.key) {
+function handleMovementKey(key) {
+  switch (key) {
     case 'ArrowLeft':
       if (!paused && !magCaught) {
-        e.preventDefault();
         if (zeroFriction) {
           while (!collides(piece, -1, 0)) piece.x--;
         } else if (dasEnabled) {
@@ -20,7 +14,6 @@ document.addEventListener('keydown', e => {
       break;
     case 'ArrowRight':
       if (!paused && !magCaught) {
-        e.preventDefault();
         if (zeroFriction) {
           while (!collides(piece, 1, 0)) piece.x++;
         } else if (dasEnabled) {
@@ -33,14 +26,45 @@ document.addEventListener('keydown', e => {
       break;
     case 'ArrowDown':
       if (!paused && dasEnabled) {
-        e.preventDefault();
         startDAS('down', () => { moveDown(); elapsed = 0; });
       } else if (!paused) {
         moveDown(); elapsed = 0;
       }
       break;
     case 'ArrowUp':    if (!paused) { tryRotate(); if (doubleInputActive) tryRotate(); } break;
-    case ' ':          if (!paused) hardDrop(); e.preventDefault(); break;
+    case ' ':          if (!paused) hardDrop(); break;
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (!inGame) return;
+  if (gameOver) {
+    if (e.key === 'Enter') sendWS({ type: 'play_again' });
+    return;
+  }
+  if (inputDelayMs > 0 && ['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp', ' '].includes(e.key)) {
+    e.preventDefault();
+    setTimeout(() => {
+      if (!inGame || gameOver || paused) return;
+      handleMovementKey(e.key);
+    }, inputDelayMs);
+    return;
+  }
+  switch (e.key) {
+    case 'ArrowLeft':
+      e.preventDefault();
+      handleMovementKey('ArrowLeft');
+      break;
+    case 'ArrowRight':
+      e.preventDefault();
+      handleMovementKey('ArrowRight');
+      break;
+    case 'ArrowDown':
+      e.preventDefault();
+      handleMovementKey('ArrowDown');
+      break;
+    case 'ArrowUp':    handleMovementKey('ArrowUp'); break;
+    case ' ':          handleMovementKey(' '); e.preventDefault(); break;
     case 'c': case 'C': if (!paused) holdPiece(); break;
     case 'p': case 'P':
       paused = !paused;

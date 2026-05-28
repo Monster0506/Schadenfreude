@@ -576,6 +576,91 @@ const STORE_ITEMS = {
     },
   }),
 
+  latency_sim: makeItem({
+    label: 'LATENCY SIM', cost: 8, cat: 'offense',
+    msgType: 'latency_sim',
+    tip: 'Adds a 250ms delay to all opponent inputs for 8 seconds.',
+    active: false,
+    _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
+      this.active = true;
+      sendWS({ type: 'latency_sim', target });
+      this._clearMsg();
+      this._showMsg('[latency sim -> ' + target + ']');
+      this._timer = setTimeout(() => this.deactivate(), 8000);
+      this._updateBtn();
+      this._setActive(true);
+    },
+    buy() {
+      if (!pickTarget()) return;
+      if (!this._tryBuy()) return;
+      if (this.active) { this._queue++; this._updateBtn(); showMsg('[latency queued x' + this._queue + ']'); return; }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._rxClear();
+      inputDelayMs = 0;
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    onMessage(msg) {
+      if (msg.type === 'latency_sim' && inGame && !gameOver) {
+        this._rxClear();
+        inputDelayMs = 250;
+        this._rxDismiss = showMsg('[LATENCY - 8s]');
+        this._rxTimer = setTimeout(() => { inputDelayMs = 0; this._rxClear(); }, 8000);
+      }
+    },
+  }),
+
+  stuck_key: makeItem({
+    label: 'STUCK KEY', cost: 10, cat: 'offense',
+    msgType: 'stuck_key',
+    tip: 'Simulates a jammed Left or Right key on the opponent for 8 seconds.',
+    active: false,
+    _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
+      this.active = true;
+      sendWS({ type: 'stuck_key', target });
+      this._clearMsg();
+      this._showMsg('[stuck key -> ' + target + ']');
+      this._timer = setTimeout(() => this.deactivate(), 8000);
+      this._updateBtn();
+      this._setActive(true);
+    },
+    buy() {
+      if (!pickTarget()) return;
+      if (!this._tryBuy()) return;
+      if (this.active) { this._queue++; this._updateBtn(); showMsg('[stuck key queued x' + this._queue + ']'); return; }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._rxClear();
+      stuckKeyDir = 0;
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    onMessage(msg) {
+      if (msg.type === 'stuck_key' && inGame && !gameOver) {
+        this._rxClear();
+        stuckKeyDir = Math.random() < 0.5 ? -1 : 1;
+        const dirName = stuckKeyDir === -1 ? 'LEFT' : 'RIGHT';
+        this._rxDismiss = showMsg('[STUCK ' + dirName + ' - 8s]');
+        this._rxTimer = setTimeout(() => { stuckKeyDir = 0; this._rxClear(); }, 8000);
+      }
+    },
+  }),
+
   qscan: makeItem({
     label: 'Q-SCAN', cost: 2, cat: 'intel',
     msgType: 'queue_scan',

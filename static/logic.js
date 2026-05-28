@@ -243,6 +243,10 @@ function loop(ts) {
   }
 
   applyMagnet();
+  if (stuckKeyDir !== 0 && !paused && !gameOver) {
+    const dx = stuckKeyDir;
+    if (!collides(piece, dx, 0)) piece.x += dx;
+  }
   drawBoard();
   drawNext();
   drawHeld();
