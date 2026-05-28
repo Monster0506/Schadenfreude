@@ -166,9 +166,17 @@ function applyBounce() {
   return true;
 }
 
+function atCeiling() {
+  if (!gravityFlipped) return false;
+  for (let r = 0; r < piece.matrix.length; r++)
+    for (let c = 0; c < piece.matrix[r].length; c++)
+      if (piece.matrix[r][c] && piece.y + r - 1 < 0) return true;
+  return false;
+}
+
 function moveDown() {
   const dy = gravityFlipped ? -1 : 1;
-  if (!collides(piece, 0, dy)) {
+  if (!collides(piece, 0, dy) && !atCeiling()) {
     piece.y += dy;
   } else {
     applyBounce();
@@ -178,7 +186,7 @@ function moveDown() {
 
 function hardDrop() {
   const dy = gravityFlipped ? -1 : 1;
-  while (!collides(piece, 0, dy)) piece.y += dy;
+  while (!collides(piece, 0, dy) && !atCeiling()) piece.y += dy;
   applyBounce();
   lock();
 }
