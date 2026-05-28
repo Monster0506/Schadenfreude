@@ -284,6 +284,15 @@ function loop(ts) {
     const sdx = pieceCenter < center ? 1 : pieceCenter > center ? -1 : 0;
     if (sdx !== 0 && !collides(piece, sdx, 0)) piece.x += sdx;
   }
+  if (prismActive) {
+    prismPhase += dt * 0.002;
+    const swayX = Math.sin(prismPhase * 1.3) * 8;
+    const swayY = Math.sin(prismPhase * 0.9) * 4;
+    const tilt = Math.sin(prismPhase) * 3;
+    boardCanvas.style.transform = `translate(${swayX}px,${swayY}px) rotate(${tilt}deg)`;
+  } else if (boardCanvas.style.transform) {
+    boardCanvas.style.transform = '';
+  }
   drawBoard();
   drawNext();
   drawHeld();

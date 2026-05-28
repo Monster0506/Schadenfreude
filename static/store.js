@@ -661,6 +661,56 @@ const STORE_ITEMS = {
     },
   }),
 
+  the_prism: makeItem({
+    label: 'THE PRISM', cost: 9, cat: 'offense',
+    msgType: 'the_prism',
+    tip: "Board sways and tilts on opponent's screen for 12 seconds.",
+    active: false,
+    _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
+      this.active = true;
+      sendWS({ type: 'the_prism', target });
+      this._clearMsg();
+      this._showMsg('[prism -> ' + target + ']');
+      this._timer = setTimeout(() => this.deactivate(), 12000);
+      this._updateBtn();
+      this._setActive(true);
+    },
+    buy() {
+      if (!pickTarget()) return;
+      if (!this._tryBuy()) return;
+      if (this.active) { this._queue++; this._updateBtn(); showMsg('[prism queued x' + this._queue + ']'); return; }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._rxClear();
+      prismActive = false;
+      prismPhase = 0;
+      boardCanvas.style.transform = '';
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    onMessage(msg) {
+      if (msg.type === 'the_prism' && inGame && !gameOver) {
+        this._rxClear();
+        prismActive = true;
+        prismPhase = 0;
+        this._rxDismiss = showMsg('[THE PRISM - 12s]');
+        this._rxTimer = setTimeout(() => {
+          prismActive = false;
+          prismPhase = 0;
+          boardCanvas.style.transform = '';
+          this._rxClear();
+        }, 12000);
+      }
+    },
+  }),
+
   ghost_board: makeItem({
     label: 'GHOST BOARD', cost: 8, cat: 'offense',
     msgType: 'ghost_board',
