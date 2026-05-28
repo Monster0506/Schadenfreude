@@ -13,23 +13,28 @@ function fillQueue() {
   }
 }
 
+function spawnY(mat) {
+  return gravityFlipped ? ROWS - mat.length : 0;
+}
+
 function drawFromQueue() {
   if (gluttonyActive && Date.now() < gluttonyUntil) {
     const keys = ['awkward_1', 'awkward_2', 'awkward_3', 't_clog', 'mega_mino'];
     const mat = CUSTOM_PIECES[keys[Math.floor(Math.random() * keys.length)]].map(r => [...r]);
-    return { id: 0, matrix: mat, x: Math.floor(COLS / 2) - Math.floor(mat[0].length / 2), y: 0 };
+    return { id: 0, matrix: mat, x: Math.floor(COLS / 2) - Math.floor(mat[0].length / 2), y: spawnY(mat) };
   }
   if (nextPieceOverrides.length > 0) {
     const mat = nextPieceOverrides.shift();
-    return { id: 0, matrix: mat, x: Math.floor(COLS / 2) - Math.floor(mat[0].length / 2), y: 0 };
+    return { id: 0, matrix: mat, x: Math.floor(COLS / 2) - Math.floor(mat[0].length / 2), y: spawnY(mat) };
   }
   if (queueLockRemaining > 0) {
     queueLockRemaining--;
     const mat = PIECES[queueLockPieceId].map(r => [...r]);
-    return { id: queueLockPieceId, matrix: mat, x: Math.floor(COLS / 2) - Math.floor(mat[0].length / 2), y: 0 };
+    return { id: queueLockPieceId, matrix: mat, x: Math.floor(COLS / 2) - Math.floor(mat[0].length / 2), y: spawnY(mat) };
   }
   fillQueue();
   const p = pieceQueue.shift();
+  p.y = spawnY(p.matrix);
   fillQueue();
   return p;
 }
@@ -149,9 +154,10 @@ function applyMagnet() {
 function applyBounce() {
   if (bouncyBlocksLeft <= 0) return false;
   bouncyBlocksLeft--;
+  const bdy = gravityFlipped ? 1 : -1;
   let moved = 0;
-  while (moved < 2 && piece.y > 0 && !collides(piece, 0, -1)) {
-    piece.y--;
+  while (moved < 2 && !collides(piece, 0, bdy)) {
+    piece.y += bdy;
     moved++;
   }
   const left = bouncyBlocksLeft;
@@ -160,8 +166,9 @@ function applyBounce() {
 }
 
 function moveDown() {
-  if (!collides(piece, 0, 1)) {
-    piece.y++;
+  const dy = gravityFlipped ? -1 : 1;
+  if (!collides(piece, 0, dy)) {
+    piece.y += dy;
   } else {
     applyBounce();
     lock();
@@ -169,7 +176,8 @@ function moveDown() {
 }
 
 function hardDrop() {
-  while (!collides(piece, 0, 1)) piece.y++;
+  const dy = gravityFlipped ? -1 : 1;
+  while (!collides(piece, 0, dy)) piece.y += dy;
   applyBounce();
   lock();
 }

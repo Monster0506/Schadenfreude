@@ -50,7 +50,8 @@ function drawBoard() {
   }
 
   let ghostY = piece.y;
-  while (!collides(piece, 0, ghostY - piece.y + 1)) ghostY++;
+  const gDir = gravityFlipped ? -1 : 1;
+  while (!collides(piece, 0, ghostY - piece.y + gDir)) ghostY += gDir;
   if (ghostY !== piece.y) {
     for (let r = 0; r < piece.matrix.length; r++)
       for (let c = 0; c < piece.matrix[r].length; c++)
@@ -81,6 +82,14 @@ function drawBoard() {
     boardCtx.lineWidth = 4;
     boardCtx.strokeRect(2, 2, boardCanvas.width - 4, boardCanvas.height - 4);
     boardCtx.lineWidth = 1;
+  }
+  if (gravityFlipped) {
+    boardCtx.strokeStyle = 'rgba(180,80,255,0.8)';
+    boardCtx.lineWidth = 4;
+    boardCtx.strokeRect(2, 2, boardCanvas.width - 4, boardCanvas.height - 4);
+    boardCtx.lineWidth = 1;
+    boardCtx.fillStyle = 'rgba(180,80,255,0.15)';
+    boardCtx.fillRect(0, 0, boardCanvas.width, boardCanvas.height);
   }
 }
 

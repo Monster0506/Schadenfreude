@@ -661,6 +661,48 @@ const STORE_ITEMS = {
     },
   }),
 
+  gravity_flip: makeItem({
+    label: 'GRAVITY FLIP', cost: 12, cat: 'offense',
+    msgType: 'gravity_flip',
+    tip: "Reverses opponent's gravity for 12 seconds — pieces fall upward.",
+    active: false,
+    _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
+      this.active = true;
+      sendWS({ type: 'gravity_flip', target });
+      this._clearMsg();
+      this._showMsg('[gravity flip -> ' + target + ']');
+      this._timer = setTimeout(() => this.deactivate(), 12000);
+      this._updateBtn();
+      this._setActive(true);
+    },
+    buy() {
+      if (!pickTarget()) return;
+      if (!this._tryBuy()) return;
+      if (this.active) { this._queue++; this._updateBtn(); showMsg('[gravity flip queued x' + this._queue + ']'); return; }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._rxClear();
+      gravityFlipped = false;
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    onMessage(msg) {
+      if (msg.type === 'gravity_flip' && inGame && !gameOver) {
+        this._rxClear();
+        gravityFlipped = true;
+        this._rxDismiss = showMsg('[GRAVITY FLIPPED - 12s]');
+        this._rxTimer = setTimeout(() => { gravityFlipped = false; this._rxClear(); }, 12000);
+      }
+    },
+  }),
+
   bouncy_blocks: makeItem({
     label: 'BOUNCY BLOCKS', cost: 9, cat: 'offense',
     msgType: 'bouncy_blocks',
