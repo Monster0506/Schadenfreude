@@ -661,6 +661,50 @@ const STORE_ITEMS = {
     },
   }),
 
+  concrete_fill: makeItem({
+    label: 'CONCRETE FILL', cost: 6, cat: 'offense',
+    msgType: 'concrete_fill',
+    tip: "Converts opponent's lowest occupied row to indestructible concrete.",
+    active: false,
+    _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
+      this.active = true;
+      sendWS({ type: 'concrete_fill', target });
+      this._clearMsg();
+      this._showMsg('[concrete fill -> ' + target + ']');
+      this._timer = setTimeout(() => this.deactivate(), 1000);
+      this._updateBtn();
+      this._setActive(true);
+    },
+    buy() {
+      if (!pickTarget()) return;
+      if (!this._tryBuy()) return;
+      if (this.active) { this._queue++; this._updateBtn(); showMsg('[concrete queued x' + this._queue + ']'); return; }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    onMessage(msg) {
+      if (msg.type === 'concrete_fill' && inGame && !gameOver) {
+        for (let r = ROWS - 1; r >= 0; r--) {
+          if (board[r].some(v => v !== 0)) {
+            board[r] = board[r].map(v => v !== 0 ? 9 : 0);
+            showMsg('[CONCRETE FILL!]');
+            return;
+          }
+        }
+        showMsg('[no row to concretize]');
+      }
+    },
+  }),
+
   static_distort: makeItem({
     label: 'STATIC DISTORT', cost: 5, cat: 'offense',
     msgType: 'static_distort',
