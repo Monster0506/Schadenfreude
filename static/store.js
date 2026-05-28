@@ -662,6 +662,50 @@ const STORE_ITEMS = {
     },
   }),
 
+  high_hazard_spawn: makeItem({
+    label: 'HIGH-HAZARD SPAWN', cost: 12, cat: 'offense',
+    msgType: 'high_hazard_spawn',
+    tip: 'Force-spawns 5 gold blocks in dangerous positions near the top of opponent board.',
+    active: false,
+    _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
+      this.active = true;
+      sendWS({ type: 'high_hazard_spawn', target });
+      this._clearMsg();
+      this._showMsg('[hazard spawn -> ' + target + ']');
+      this._timer = setTimeout(() => this.deactivate(), 1000);
+      this._updateBtn();
+      this._setActive(true);
+    },
+    buy() {
+      if (!pickTarget()) return;
+      if (!this._tryBuy()) return;
+      if (this.active) { this._queue++; this._updateBtn(); showMsg('[hazard spawn queued x' + this._queue + ']'); return; }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    onMessage(msg) {
+      if (msg.type === 'high_hazard_spawn' && inGame && !gameOver) {
+        let placed = 0;
+        const hazardRows = Math.floor(ROWS * 0.35);
+        for (let attempt = 0; attempt < 50 && placed < 5; attempt++) {
+          const r = Math.floor(Math.random() * hazardRows);
+          const c = Math.floor(Math.random() * COLS);
+          if (!board[r][c]) { board[r][c] = 8; placed++; }
+        }
+        showMsg('[HIGH-HAZARD: ' + placed + ' gold spawned near top!]');
+      }
+    },
+  }),
+
   financial_crash: makeItem({
     label: 'FINANCIAL CRASH', cost: 10, cat: 'offense',
     msgType: 'financial_crash',
