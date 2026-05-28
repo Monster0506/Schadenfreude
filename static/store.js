@@ -661,6 +661,47 @@ const STORE_ITEMS = {
     },
   }),
 
+  the_monolith: makeItem({
+    label: 'THE MONOLITH', cost: 12, cat: 'offense',
+    msgType: 'the_monolith',
+    tip: 'Spawn a 1x8 indestructible concrete pillar in opponent\'s center column.',
+    active: false,
+    _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
+      this.active = true;
+      sendWS({ type: 'the_monolith', target });
+      this._clearMsg();
+      this._showMsg('[monolith -> ' + target + ']');
+      this._timer = setTimeout(() => this.deactivate(), 1000);
+      this._updateBtn();
+      this._setActive(true);
+    },
+    buy() {
+      if (!pickTarget()) return;
+      if (!this._tryBuy()) return;
+      if (this.active) { this._queue++; this._updateBtn(); showMsg('[monolith queued x' + this._queue + ']'); return; }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    onMessage(msg) {
+      if (msg.type === 'the_monolith' && inGame && !gameOver) {
+        const col = Math.floor(COLS / 2);
+        for (let r = ROWS - 8; r < ROWS; r++) {
+          if (r >= 0) board[r][col] = 9;
+        }
+        showMsg('[THE MONOLITH rises!]');
+      }
+    },
+  }),
+
   custom_pieces: makeItem({
     label: 'CUSTOM PIECES', cost: 10, cat: 'offense',
     msgType: 'custom_pieces',
