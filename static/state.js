@@ -29,3 +29,49 @@ let myId = null;
 let roomId = null;
 let isCreator = false;
 const opponents = new Map();
+
+// hold piece
+let heldPiece = null;
+let holdUsed = false;
+let holdDisabled = false;
+
+// queue/spawn effects
+let queueLockRemaining = 0;
+let queueLockPieceId = 5;
+let nextPieceOverrides = [];
+let speedDemonActive = false;
+let autoRotateActive = false;
+let autoRotateTimer = 0;
+let gluttonyActive = false;
+let gluttonyUntil = 0;
+
+// mechanical effects
+let doubleInputActive = false;
+let inputDelayMs = 0;
+let bouncyBlocksLeft = 0;
+let bouncyBouncing = false;
+let bouncyBounceY = 0;
+let stuckKeyDir = 0;
+let singularityActive = false;
+let gravityFlipped = false;
+
+// visual effects
+let strobeLightActive = false;
+let camouflageActive = false;
+let staticDistortActive = false;
+let ghostBoardActive = false;
+let prismActive = false;
+let prismPhase = 0;
+let minoDecayActive = false;
+let minoDecayBlocks = [];
+
+// defensive
+let lossProtectionActive = false;
+let lossProtectionGold = 0;
+let invulnUntil = 0;
+
+// economic effects
+let storeBribeActive = false;
+let taxFreezeActive = false;
+let inflationActive = false;
+let goldEarnLocked = false;

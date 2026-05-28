@@ -24,6 +24,8 @@ type Msg struct {
 	NewCreator string   `json:"new_creator,omitempty"`
 	Pieces     []int    `json:"pieces,omitempty"`
 	Col        int      `json:"col,omitempty"`
+	Amount     int      `json:"amount,omitempty"`
+	Dir        int      `json:"dir,omitempty"`
 	Target     string   `json:"target,omitempty"`
 }
 

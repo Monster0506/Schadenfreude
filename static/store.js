@@ -25,6 +25,12 @@ const itemBase = {
     if (!label) return;
     label.textContent = this._queue > 0 ? this.label + ' [+' + this._queue + ']' : this.label;
   },
+  _setActive(on) {
+    const btn = document.getElementById('store-' + this._key);
+    if (!btn) return;
+    if (on) btn.classList.add('item-active');
+    else btn.classList.remove('item-active');
+  },
   reset() {
     this._queue = 0;
     this.deactivate();
@@ -376,8 +382,10 @@ function buildStore() {
       label.className = 'store-label';
       label.textContent = item.label;
       const cost = document.createElement('span');
-      cost.className = 'store-cost';
+      const tierClass = item.cost <= 5 ? 'tier-low' : item.cost <= 12 ? 'tier-mid' : 'tier-high';
+      cost.className = 'store-cost ' + tierClass;
       cost.textContent = (DEBUG ? 0 : item.cost) + 'g';
+      if (item.tip) btn.dataset.tip = item.tip;
       btn.appendChild(label);
       btn.appendChild(cost);
       btn.addEventListener('click', () => item.buy());

@@ -90,6 +90,22 @@ function drawNext() {
         drawCell(nextCtx, offX + c, offY + r, mat[r][c], cellSize);
 }
 
+function drawHeld() {
+  const canvas = document.getElementById('held');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const cellSize = 24;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!heldPiece) return;
+  const mat = heldPiece.matrix;
+  const offX = Math.floor((5 - mat[0].length) / 2);
+  const offY = Math.floor((5 - mat.length) / 2);
+  for (let r = 0; r < mat.length; r++)
+    for (let c = 0; c < mat[r].length; c++)
+      if (mat[r][c])
+        drawCell(ctx, offX + c, offY + r, mat[r][c], cellSize);
+}
+
 function showOverlay(text, sub, playAgain = false) {
   overlayText.textContent = text;
   overlaySub.textContent = sub;

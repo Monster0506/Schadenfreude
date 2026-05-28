@@ -14,10 +14,41 @@ function fillQueue() {
 }
 
 function drawFromQueue() {
+  if (gluttonyActive && Date.now() < gluttonyUntil) {
+    const keys = ['awkward_1', 'awkward_2', 'awkward_3', 't_clog', 'mega_mino'];
+    const mat = CUSTOM_PIECES[keys[Math.floor(Math.random() * keys.length)]].map(r => [...r]);
+    return { id: 0, matrix: mat, x: Math.floor(COLS / 2) - Math.floor(mat[0].length / 2), y: 0 };
+  }
+  if (nextPieceOverrides.length > 0) {
+    const mat = nextPieceOverrides.shift();
+    return { id: 0, matrix: mat, x: Math.floor(COLS / 2) - Math.floor(mat[0].length / 2), y: 0 };
+  }
+  if (queueLockRemaining > 0) {
+    queueLockRemaining--;
+    const mat = PIECES[queueLockPieceId].map(r => [...r]);
+    return { id: queueLockPieceId, matrix: mat, x: Math.floor(COLS / 2) - Math.floor(mat[0].length / 2), y: 0 };
+  }
   fillQueue();
   const p = pieceQueue.shift();
   fillQueue();
   return p;
+}
+
+function holdPiece() {
+  if (holdUsed || holdDisabled) return;
+  holdUsed = true;
+  if (heldPiece === null) {
+    heldPiece = { id: piece.id, matrix: PIECES[piece.id].map(r => [...r]) };
+    piece = drawFromQueue();
+    nextPiece = pieceQueue[0];
+  } else {
+    const newPiece = { id: heldPiece.id, matrix: PIECES[heldPiece.id].map(r => [...r]) };
+    heldPiece = { id: piece.id, matrix: PIECES[piece.id].map(r => [...r]) };
+    piece = newPiece;
+    piece.x = Math.floor(COLS / 2) - Math.floor(piece.matrix[0].length / 2);
+    piece.y = 0;
+  }
+  if (collides(piece)) endGame();
 }
 
 function rotate(matrix) {
@@ -87,6 +118,7 @@ function lock() {
   piece = drawFromQueue();
   nextPiece = pieceQueue[0];
   magCaught = false;
+  holdUsed = false;
   if (Date.now() < STORE_ITEMS.qscan._targetedUntil) sendQueueData();
 
   if (collides(piece)) endGame();
@@ -170,6 +202,10 @@ function startGame() {
   levelEl.textContent = 1;
   linesEl.textContent = 0;
   goldEl.textContent = 0;
+  heldPiece = null;
+  holdUsed = false;
+  nextPieceOverrides = [];
+  queueLockRemaining = 0;
   pieceQueue = [];
   fillQueue();
   piece = drawFromQueue();
@@ -201,6 +237,7 @@ function loop(ts) {
   applyMagnet();
   drawBoard();
   drawNext();
+  drawHeld();
   dropTimer = requestAnimationFrame(loop);
 }
 

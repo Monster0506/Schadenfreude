@@ -39,6 +39,7 @@ document.addEventListener('keydown', e => {
       break;
     case 'ArrowUp':    if (!paused) tryRotate(); break;
     case ' ':          if (!paused) hardDrop(); e.preventDefault(); break;
+    case 'c': case 'C': if (!paused) holdPiece(); break;
     case 'p': case 'P':
       paused = !paused;
       if (paused) {

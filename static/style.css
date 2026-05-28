@@ -243,3 +243,36 @@ button:hover { background: #3a3d4e; }
 #overlay-sub { font-size: 14px; color: #aaa; }
 #play-again-btn { margin-top: 8px; font-size: 14px; padding: 8px 20px; }
 #play-again-btn.hidden { display: none; }
+
+.store-btn.item-active {
+  background: rgba(255,255,255,0.06);
+}
+.store-btn.item-active[data-cat="intel"]   { border-left-color: #7ae8e8; }
+.store-btn.item-active[data-cat="defensive"] { border-left-color: #7aade8; }
+.store-btn.item-active[data-cat="offense"] { border-left-color: #e87a8a; }
+.store-btn.item-active[data-cat="economic"] { border-left-color: #e8c87a; }
+
+.store-cost.tier-low  { color: hsl(120, 50%, 55%); }
+.store-cost.tier-mid  { color: hsl(35,  70%, 60%); }
+.store-cost.tier-high { color: hsl(0,   65%, 60%); }
+
+.store-btn[data-tip] { position: relative; }
+.store-btn[data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  right: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: #0d0f1a;
+  border: 1px solid #3a3d4e;
+  color: #aaa;
+  font-size: 10px;
+  padding: 5px 8px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 100;
+  max-width: 220px;
+  white-space: normal;
+  width: 200px;
+  line-height: 1.4;
+}
