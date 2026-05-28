@@ -15,6 +15,7 @@ document.addEventListener('keydown', e => {
         } else {
           if (!collides(piece, -1, 0)) piece.x--;
         }
+        if (doubleInputActive && !collides(piece, -1, 0)) piece.x--;
       }
       break;
     case 'ArrowRight':
@@ -27,6 +28,7 @@ document.addEventListener('keydown', e => {
         } else {
           if (!collides(piece, 1, 0)) piece.x++;
         }
+        if (doubleInputActive && !collides(piece, 1, 0)) piece.x++;
       }
       break;
     case 'ArrowDown':
@@ -37,7 +39,7 @@ document.addEventListener('keydown', e => {
         moveDown(); elapsed = 0;
       }
       break;
-    case 'ArrowUp':    if (!paused) tryRotate(); break;
+    case 'ArrowUp':    if (!paused) { tryRotate(); if (doubleInputActive) tryRotate(); } break;
     case ' ':          if (!paused) hardDrop(); e.preventDefault(); break;
     case 'c': case 'C': if (!paused) holdPiece(); break;
     case 'p': case 'P':

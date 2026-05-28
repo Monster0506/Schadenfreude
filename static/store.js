@@ -526,6 +526,56 @@ const STORE_ITEMS = {
     },
   }),
 
+  double_tap: makeItem({
+    label: 'DOUBLE TAP', cost: 7, cat: 'offense',
+    msgType: 'double_tap',
+    tip: 'Opponent inputs execute twice for 10 seconds.',
+    active: false,
+    _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
+      this.active = true;
+      sendWS({ type: 'double_tap', target });
+      this._clearMsg();
+      this._showMsg('[double tap -> ' + target + ']');
+      this._timer = setTimeout(() => this.deactivate(), 10000);
+      this._updateBtn();
+      this._setActive(true);
+    },
+    buy() {
+      if (!pickTarget()) return;
+      if (!this._tryBuy()) return;
+      if (this.active) {
+        this._queue++;
+        this._updateBtn();
+        showMsg('[double tap queued x' + this._queue + ']');
+        return;
+      }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._rxClear();
+      doubleInputActive = false;
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    onMessage(msg) {
+      if (msg.type === 'double_tap' && inGame && !gameOver) {
+        this._rxClear();
+        doubleInputActive = true;
+        this._rxDismiss = showMsg('[DOUBLE TAP - 10s]');
+        this._rxTimer = setTimeout(() => {
+          doubleInputActive = false;
+          this._rxClear();
+        }, 10000);
+      }
+    },
+  }),
+
   qscan: makeItem({
     label: 'Q-SCAN', cost: 2, cat: 'intel',
     msgType: 'queue_scan',
