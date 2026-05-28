@@ -661,6 +661,64 @@ const STORE_ITEMS = {
     },
   }),
 
+  mino_decay: makeItem({
+    label: 'MINO DECAY', cost: 11, cat: 'offense',
+    msgType: 'mino_decay',
+    tip: 'Randomly dissolves ~30% of settled blocks on opponent board over 15s.',
+    active: false,
+    _decayInterval: null,
+    _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
+      this.active = true;
+      sendWS({ type: 'mino_decay', target });
+      this._clearMsg();
+      this._showMsg('[mino decay -> ' + target + ']');
+      this._timer = setTimeout(() => this.deactivate(), 15000);
+      this._updateBtn();
+      this._setActive(true);
+    },
+    buy() {
+      if (!pickTarget()) return;
+      if (!this._tryBuy()) return;
+      if (this.active) { this._queue++; this._updateBtn(); showMsg('[mino decay queued x' + this._queue + ']'); return; }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._rxClear();
+      clearInterval(this._decayInterval);
+      this._decayInterval = null;
+      minoDecayActive = false;
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    onMessage(msg) {
+      if (msg.type === 'mino_decay' && inGame && !gameOver) {
+        this._rxClear();
+        minoDecayActive = true;
+        this._rxDismiss = showMsg('[MINO DECAY - 15s]');
+        clearInterval(this._decayInterval);
+        this._decayInterval = setInterval(() => {
+          if (!inGame || gameOver) { clearInterval(this._decayInterval); return; }
+          for (let r = 0; r < ROWS; r++)
+            for (let c = 0; c < COLS; c++)
+              if (board[r][c] && board[r][c] !== 9 && Math.random() < 0.015)
+                board[r][c] = 0;
+        }, 250);
+        this._rxTimer = setTimeout(() => {
+          minoDecayActive = false;
+          clearInterval(this._decayInterval);
+          this._decayInterval = null;
+          this._rxClear();
+        }, 15000);
+      }
+    },
+  }),
+
   the_prism: makeItem({
     label: 'THE PRISM', cost: 9, cat: 'offense',
     msgType: 'the_prism',
