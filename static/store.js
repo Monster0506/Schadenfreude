@@ -662,6 +662,60 @@ const STORE_ITEMS = {
     },
   }),
 
+  irs_audit: makeItem({
+    label: 'IRS AUDIT', cost: 5, cat: 'offense',
+    msgType: 'irs_audit',
+    tip: "Steals all gold blocks from opponent's board and adds them to yours.",
+    active: false,
+    _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
+      this.active = true;
+      sendWS({ type: 'irs_audit', target });
+      this._clearMsg();
+      this._showMsg('[IRS audit -> ' + target + ']');
+      this._timer = setTimeout(() => this.deactivate(), 1000);
+      this._updateBtn();
+      this._setActive(true);
+    },
+    buy() {
+      if (!pickTarget()) return;
+      if (!this._tryBuy()) return;
+      if (this.active) { this._queue++; this._updateBtn(); showMsg('[IRS queued x' + this._queue + ']'); return; }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._rxClear();
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    _stolenGold: 0,
+    onMessage(msg) {
+      if (msg.type === 'irs_audit' && inGame && !gameOver) {
+        let stolen = 0;
+        for (let r = 0; r < ROWS; r++)
+          for (let c = 0; c < COLS; c++)
+            if (board[r][c] === 8) { board[r][c] = 0; stolen++; }
+        if (stolen > 0) showMsg('[AUDITED: -' + stolen + 'g seized!]');
+        else showMsg('[IRS found nothing]');
+        sendWS({ type: 'irs_stolen', amount: stolen, target: msg.id });
+      }
+      if (msg.type === 'irs_stolen' && msg.id !== myId) {
+        const amt = msg.amount || 0;
+        if (amt > 0) {
+          gold += amt;
+          goldEl.textContent = gold;
+          showMsg('[IRS seized ' + amt + 'g from opponent!]');
+          sendScore();
+        }
+      }
+    },
+  }),
+
   bribe: makeItem({
     label: 'BRIBE', cost: 4, cat: 'offense',
     msgType: 'bribe',
