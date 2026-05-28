@@ -40,7 +40,8 @@ function drawFromQueue() {
 }
 
 function holdPiece() {
-  if (holdUsed || holdDisabled) return;
+  if (holdDisabled) { showMsg('[hold disabled!]'); return; }
+  if (holdUsed) return;
   holdUsed = true;
   if (heldPiece === null) {
     heldPiece = { id: piece.id, matrix: PIECES[piece.id].map(r => [...r]) };

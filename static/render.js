@@ -142,6 +142,10 @@ function drawHeld() {
   const ctx = canvas.getContext('2d');
   const cellSize = 24;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (holdDisabled) {
+    ctx.fillStyle = 'rgba(200,80,80,0.15)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
   if (!heldPiece) return;
   const mat = heldPiece.matrix;
   const offX = Math.floor((5 - mat[0].length) / 2);
