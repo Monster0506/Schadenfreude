@@ -83,6 +83,16 @@ function drawBoard() {
     boardCtx.strokeRect(2, 2, boardCanvas.width - 4, boardCanvas.height - 4);
     boardCtx.lineWidth = 1;
   }
+  if (singularityActive) {
+    const cx = Math.floor(COLS / 2) * CELL;
+    const pulse = 0.3 + 0.2 * Math.sin(performance.now() / 180);
+    boardCtx.fillStyle = `rgba(200,160,255,${pulse})`;
+    boardCtx.fillRect(cx, 0, CELL, ROWS * CELL);
+    boardCtx.strokeStyle = 'rgba(200,160,255,0.6)';
+    boardCtx.lineWidth = 2;
+    boardCtx.strokeRect(cx, 0, CELL, ROWS * CELL);
+    boardCtx.lineWidth = 1;
+  }
   if (gravityFlipped) {
     boardCtx.strokeStyle = 'rgba(180,80,255,0.8)';
     boardCtx.lineWidth = 4;

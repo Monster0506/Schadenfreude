@@ -661,6 +661,48 @@ const STORE_ITEMS = {
     },
   }),
 
+  the_singularity: makeItem({
+    label: 'THE SINGULARITY', cost: 30, cat: 'offense',
+    msgType: 'the_singularity',
+    tip: 'Opponent piece is continuously pulled toward the center column for 15s.',
+    active: false,
+    _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
+      this.active = true;
+      sendWS({ type: 'the_singularity', target });
+      this._clearMsg();
+      this._showMsg('[singularity -> ' + target + ']');
+      this._timer = setTimeout(() => this.deactivate(), 15000);
+      this._updateBtn();
+      this._setActive(true);
+    },
+    buy() {
+      if (!pickTarget()) return;
+      if (!this._tryBuy()) return;
+      if (this.active) { this._queue++; this._updateBtn(); showMsg('[singularity queued x' + this._queue + ']'); return; }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._rxClear();
+      singularityActive = false;
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    onMessage(msg) {
+      if (msg.type === 'the_singularity' && inGame && !gameOver) {
+        this._rxClear();
+        singularityActive = true;
+        this._rxDismiss = showMsg('[SINGULARITY - 15s]');
+        this._rxTimer = setTimeout(() => { singularityActive = false; this._rxClear(); }, 15000);
+      }
+    },
+  }),
+
   gravity_flip: makeItem({
     label: 'GRAVITY FLIP', cost: 12, cat: 'offense',
     msgType: 'gravity_flip',

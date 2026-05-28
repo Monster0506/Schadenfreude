@@ -270,6 +270,12 @@ function loop(ts) {
     const dx = stuckKeyDir;
     if (!collides(piece, dx, 0)) piece.x += dx;
   }
+  if (singularityActive && !paused && !gameOver) {
+    const center = Math.floor(COLS / 2);
+    const pieceCenter = piece.x + Math.floor(piece.matrix[0].length / 2);
+    const sdx = pieceCenter < center ? 1 : pieceCenter > center ? -1 : 0;
+    if (sdx !== 0 && !collides(piece, sdx, 0)) piece.x += sdx;
+  }
   drawBoard();
   drawNext();
   drawHeld();
