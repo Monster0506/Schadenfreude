@@ -661,6 +661,48 @@ const STORE_ITEMS = {
     },
   }),
 
+  strobe_light: makeItem({
+    label: 'STROBE LIGHT', cost: 3, cat: 'offense',
+    msgType: 'strobe_light',
+    tip: 'Board background flashes rapidly for 6 seconds.',
+    active: false,
+    _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
+      this.active = true;
+      sendWS({ type: 'strobe_light', target });
+      this._clearMsg();
+      this._showMsg('[strobe light -> ' + target + ']');
+      this._timer = setTimeout(() => this.deactivate(), 6000);
+      this._updateBtn();
+      this._setActive(true);
+    },
+    buy() {
+      if (!pickTarget()) return;
+      if (!this._tryBuy()) return;
+      if (this.active) { this._queue++; this._updateBtn(); showMsg('[strobe queued x' + this._queue + ']'); return; }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._rxClear();
+      strobeLightActive = false;
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    onMessage(msg) {
+      if (msg.type === 'strobe_light' && inGame && !gameOver) {
+        this._rxClear();
+        strobeLightActive = true;
+        this._rxDismiss = showMsg('[STROBE LIGHT - 6s]');
+        this._rxTimer = setTimeout(() => { strobeLightActive = false; this._rxClear(); }, 6000);
+      }
+    },
+  }),
+
   gluttony: makeItem({
     label: 'GLUTTONY', cost: 30, cat: 'offense',
     msgType: 'gluttony',

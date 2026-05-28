@@ -23,6 +23,11 @@ function drawCell(ctx, x, y, colorId, cellSize = CELL) {
 
 function drawBoard() {
   boardCtx.clearRect(0, 0, boardCanvas.width, boardCanvas.height);
+  if (strobeLightActive) {
+    const on = Math.floor(performance.now() / 80) % 2 === 0;
+    boardCtx.fillStyle = on ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.5)';
+    boardCtx.fillRect(0, 0, boardCanvas.width, boardCanvas.height);
+  }
   boardCtx.strokeStyle = '#222430';
   for (let r = 0; r <= ROWS; r++) {
     boardCtx.beginPath();
