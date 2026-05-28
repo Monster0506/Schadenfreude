@@ -661,6 +661,48 @@ const STORE_ITEMS = {
     },
   }),
 
+  speed_demon: makeItem({
+    label: 'SPEED DEMON', cost: 6, cat: 'offense',
+    msgType: 'speed_demon',
+    tip: 'Forces opponent to max drop speed for 6 seconds.',
+    active: false,
+    _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
+      this.active = true;
+      sendWS({ type: 'speed_demon', target });
+      this._clearMsg();
+      this._showMsg('[speed demon -> ' + target + ']');
+      this._timer = setTimeout(() => this.deactivate(), 6000);
+      this._updateBtn();
+      this._setActive(true);
+    },
+    buy() {
+      if (!pickTarget()) return;
+      if (!this._tryBuy()) return;
+      if (this.active) { this._queue++; this._updateBtn(); showMsg('[speed demon queued x' + this._queue + ']'); return; }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._rxClear();
+      speedDemonActive = false;
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    onMessage(msg) {
+      if (msg.type === 'speed_demon' && inGame && !gameOver) {
+        this._rxClear();
+        speedDemonActive = true;
+        this._rxDismiss = showMsg('[SPEED DEMON - 6s]');
+        this._rxTimer = setTimeout(() => { speedDemonActive = false; this._rxClear(); }, 6000);
+      }
+    },
+  }),
+
   queue_lock: makeItem({
     label: 'QUEUE LOCK', cost: 5, cat: 'offense',
     msgType: 'queue_lock',

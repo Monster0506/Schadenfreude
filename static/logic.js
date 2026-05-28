@@ -254,7 +254,8 @@ function loop(ts) {
   lastTime = ts;
 
   elapsed += dt;
-  if (elapsed >= LEVEL_SPEED(level)) {
+  const dropSpeed = speedDemonActive ? 50 : LEVEL_SPEED(level);
+  if (elapsed >= dropSpeed) {
     moveDown();
     elapsed = 0;
   }
