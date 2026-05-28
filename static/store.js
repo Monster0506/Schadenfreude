@@ -13,7 +13,7 @@ const itemBase = {
   },
   _tryBuy() {
     if (storeBribeActive) { showMsg('[store locked!]'); return false; }
-    const cost = DEBUG ? 0 : this.cost;
+    const cost = DEBUG ? 0 : (inflationActive ? this.cost * 2 : this.cost);
     if (gold < cost) return false;
     gold -= cost;
     goldEl.textContent = gold;
@@ -658,6 +658,48 @@ const STORE_ITEMS = {
         const dirName = stuckKeyDir === -1 ? 'LEFT' : 'RIGHT';
         this._rxDismiss = showMsg('[STUCK ' + dirName + ' - 8s]');
         this._rxTimer = setTimeout(() => { stuckKeyDir = 0; this._rxClear(); }, 8000);
+      }
+    },
+  }),
+
+  inflation: makeItem({
+    label: 'INFLATION', cost: 6, cat: 'offense',
+    msgType: 'inflation',
+    tip: "Doubles opponent's store prices for 15 seconds.",
+    active: false,
+    _activate() {
+      const target = pickTarget();
+      if (!target) { this._queue = 0; this._updateBtn(); return; }
+      this.active = true;
+      sendWS({ type: 'inflation', target });
+      this._clearMsg();
+      this._showMsg('[inflation -> ' + target + ']');
+      this._timer = setTimeout(() => this.deactivate(), 15000);
+      this._updateBtn();
+      this._setActive(true);
+    },
+    buy() {
+      if (!pickTarget()) return;
+      if (!this._tryBuy()) return;
+      if (this.active) { this._queue++; this._updateBtn(); showMsg('[inflation queued x' + this._queue + ']'); return; }
+      this._activate();
+    },
+    deactivate() {
+      this.active = false;
+      this._clearTimer();
+      this._clearMsg();
+      this._rxClear();
+      inflationActive = false;
+      this._setActive(false);
+      if (this._queue > 0) { this._queue--; this._activate(); }
+      else this._updateBtn();
+    },
+    onMessage(msg) {
+      if (msg.type === 'inflation' && inGame && !gameOver) {
+        this._rxClear();
+        inflationActive = true;
+        this._rxDismiss = showMsg('[INFLATION - prices doubled 15s]');
+        this._rxTimer = setTimeout(() => { inflationActive = false; this._rxClear(); }, 15000);
       }
     },
   }),
