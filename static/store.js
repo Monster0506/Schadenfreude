@@ -1796,22 +1796,38 @@ const STORE_ITEMS = {
       if (this.active) { this._queue++; this._updateBtn(); showMsg('[gravity flip queued x' + this._queue + ']'); return; }
       this._activate();
     },
+    _rxUnflip() {
+      if (!gravityFlipped) return;
+      board.reverse();
+      gravityFlipped = false;
+      magCaught = false; holdUsed = false;
+      piece = drawFromQueue(); nextPiece = pieceQueue[0];
+    },
     deactivate() {
       this.active = false;
       this._clearTimer();
       this._clearMsg();
+      this._rxUnflip();
       this._rxClear();
-      gravityFlipped = false;
       this._setActive(false);
       if (this._queue > 0) { this._queue--; this._activate(); }
       else this._updateBtn();
     },
     onMessage(msg) {
       if (msg.type === 'gravity_flip' && inGame && !gameOver) {
+        const wasFlipped = gravityFlipped;
         this._rxClear();
-        gravityFlipped = true;
+        if (!wasFlipped) {
+          board.reverse();
+          gravityFlipped = true;
+          magCaught = false; holdUsed = false;
+          piece = drawFromQueue(); nextPiece = pieceQueue[0];
+        }
         this._rxDismiss = showMsg('[GRAVITY FLIPPED - 12s]');
-        this._rxTimer = setTimeout(() => { gravityFlipped = false; this._rxClear(); }, 12000);
+        this._rxTimer = setTimeout(() => {
+          this._rxUnflip();
+          this._rxClear();
+        }, 12000);
       }
     },
   }),

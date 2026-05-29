@@ -75,6 +75,7 @@ function collides(p, dx = 0, dy = 0, mat = null) {
       const nx = p.x + c + dx;
       const ny = p.y + r + dy;
       if (nx < 0 || nx >= COLS || ny >= ROWS) return true;
+      if (gravityFlipped && ny < 0) return true;
       if (ny >= 0 && board[ny][nx]) return true;
     }
   }
